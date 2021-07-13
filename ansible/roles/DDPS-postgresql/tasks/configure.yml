@@ -1,0 +1,148 @@
+---
+# set_fact:
+#   apply_example_data: "{% if env == 'prod' %} yes {% else %} no {% endif %}"
+#   enable_network_login: "{% if env == 'prod' %} yes {% else %} no {% endif %}"
+  
+# Ansible throws WARNING Consider using 'become' .. if written as sudo -H -u postgres ...
+# One may also use one of the many third part modules, but this will do
+- name: "Configure postgres ... "
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: get postgres major version
+    shell: |
+      su - postgres -c "psql -t -c 'SHOW server_version ;'" | \
+      sed 's/\..*//; s/[[:blank:]]//g; /^$/d'
+    args:
+      warn: false
+    register: postgres_major_version
+  
+  - name: print postgres major version
+    debug: var=postgres_major_version.stdout
+  
+  - name: Check postgres major version ok
+    fail: 
+      msg: "Cannot determin postgres major version from {{ postgres_major_version.stdout }} Check target 'get postgres major version'"
+    when: postgres_major_version.stdout | length == 0
+
+  - name: set_facts for config files
+    set_fact:
+      postgresql_conf: "/etc/postgresql/{{ postgres_major_version.stdout }}/main/postgresql.conf"
+      pg_hba_conf: "/etc/postgresql/{{ postgres_major_version.stdout }}/main/pg_hba.conf"
+  
+  - name: Check that config files exists
+    stat:
+      path: "{{ item }}"
+    with_items:
+      - "{{ postgresql_conf }}"
+      - "{{ pg_hba_conf }}"
+    register: cfg
+    failed_when: cfg.stat.exists == False
+  
+  - name: "Initiating config changes .. "
+    become: true
+    become_user: "root"
+    become_method: "{{ use_become_method }}"
+    block:
+    - name: "preserve existing configuration files "
+      copy:
+        src: "{{ item }}"
+        dest: "{{ item }}.{{ ansible_date_time.epoch }}.bak"
+        mode: preserve
+        remote_src: yes
+      with_items:
+        - "{{ postgresql_conf }}"
+        - "{{ pg_hba_conf }}"
+  
+    - name: "Enable network login (development only)"
+      blockinfile:
+        path: "{{ pg_hba_conf }}"
+        block: |
+          # Vagrant images only 
+          host    flows         postgres        0.0.0.0/0            md5
+      when: development|default(false)|bool == true
+
+    - name: "Change listening address to '127.0.0.1'"
+      lineinfile:
+        path: "{{ postgresql_conf }}"
+        regexp: '^listen_addresses.*=.*'
+        line: listen_addresses = '127.0.0.1'
+        insertbefore: '#listen_addresses.*'
+      when: development|default(false)|bool == true
+
+    - name: "Change listening address to '*'"
+      lineinfile:
+        path: "{{ postgresql_conf }}"
+        regexp: '^listen_addresses.*=.*'
+        line: listen_addresses = '*'
+        insertbefore: '#listen_addresses.*'
+      when: development|default(false)|bool == true
+
+    - name: "Disable SSL "
+      lineinfile:
+        path: "{{ postgresql_conf }}"
+        regexp: '^ssl\s*=.*'
+        line: 'ssl = off'
+      when: development|default(false)|bool == true
+
+    - name: Populate service facts
+      service_facts:
+    - name: Stop db2bgp if installed
+      service:
+        name: db2bgp
+        state: stopped
+      when: "'db2bgp.service' in services"
+
+    - name: "Copy example data to host"
+      copy:
+        src: "files/dumpall-with-oids.gz"
+        dest: /tmp/
+      when: development|default(false)|bool == true
+
+    - name: "Prepare restore and drop all database connections to database flows (vagrant only)"
+      shell: |
+        cat << EOF | su - postgres -c "psql -t "
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = 'flows'
+           AND pid <> pg_backend_pid();
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = 'flows';
+        EOF
+      args:
+        warn: false
+      register: sql_cmd
+      ignore_errors: True
+      when: development|default(false)|bool == true
+
+    - debug: var=sql_cmd
+
+    - name: "Load example data from database dump (Vagrant only)"
+      shell: |
+        gunzip -c /tmp/dumpall-with-oids.gz > /tmp/dumpall.sql
+        chown postgres /tmp/dumpall.sql
+        echo 'psql -d postgres -f  /tmp/dumpall.sql' | su postgres
+      args:
+        warn: false
+      register: pg_restore
+      ignore_errors: True
+      # Here will be errors, especially when the command runs more
+      # than one time
+      when: development|default(false)|bool == true
+
+    - debug: var=pg_restore
+
+    - name: Restart postgresql
+      service:
+        name: postgresql
+        state: restarted
+      when: "'postgresql.service' in services"
+ 
+    - name: Restart db2bgp if installed
+      service:
+        name: db2bgp
+        state: restarted
+      when: "'db2bgp.service' in services"
+ 

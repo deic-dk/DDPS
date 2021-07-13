@@ -1,0 +1,12 @@
+---
+- name: Do package management
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Install packages for all Linux hosts required for role users
+    package:
+      name: "{{ pkgs }}"
+      state: present
+
+

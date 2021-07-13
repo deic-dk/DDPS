@@ -1,0 +1,16 @@
+---
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: "Install php and restart apache"
+  include: "{{ item_task }}"
+  with_items:
+    - install_packages.yml
+    - restart_apache.yml
+    - configure_apache.yml
+  loop_control:
+    loop_var: item_task

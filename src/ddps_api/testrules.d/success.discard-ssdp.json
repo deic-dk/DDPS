@@ -1,0 +1,16 @@
+{
+  "durationminutes" : "10",
+  "destinationport": "",
+  "sourceport": "=1900",
+  "icmptype": "",
+  "icmpcode": "",
+  "packetlength": "",
+  "dscp": "",
+  "description": "ratelimit SSDP",
+  "destinationprefix": "192.168.100.0/24",
+  "sourceprefix": "0.0.0.0/0",
+  "thenaction": "rate-limit 9600",
+  "fragmentencoding": "",
+  "ipprotocol": "=17",
+  "tcpflags": ""
+}

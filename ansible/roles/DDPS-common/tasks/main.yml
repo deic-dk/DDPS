@@ -1,0 +1,26 @@
+---
+#- name: Set lock
+#  include: "../../roles/prevent_simultaneous_deploys/tasks/pre_tasks.yml"
+
+# default become_method sudo shadows for 'doas' so it aparently has to be set explicit
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: "Common tasks for provisioning Ubuntu"
+  include: "{{ item_task }}"
+  with_items:
+    - update-upgrade-add_packages.yml
+    - set_connsole_keyboard.yml
+    - add_apt_pkgs.yml
+    - add_deb_packages.yml
+    - timedate-systemd.yml
+    - linux-setlocale.yml
+    - disable_ipv6.yml
+  loop_control:
+    loop_var: item_task
+#- name: Release lock
+#  include: "../../prevent_simultaneous_deploys/tasks/post_tasks.yml"

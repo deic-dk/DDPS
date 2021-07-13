@@ -1,0 +1,16 @@
+{
+  "durationminutes" : "1442",
+  "destinationport": "=666",
+  "sourceport": "",
+  "icmptype": "",
+  "icmpcode": "",
+  "packetlength": "666",
+  "dscp": "",
+  "description": "This is Correct",
+  "destinationprefix": "10.66.66.66/32",
+  "sourceprefix": "",
+  "thenaction": " ... ",
+  "fragmentencoding": "",
+  "ipprotocol": "=6",
+  "tcpflags": ""
+}

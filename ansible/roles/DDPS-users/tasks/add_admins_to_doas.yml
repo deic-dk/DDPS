@@ -1,0 +1,15 @@
+---
+- include_vars: "{{ inventory_dir }}/group_vars/all/users.yml"
+
+- name: "Allways setup doas for administrators"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  lineinfile: 
+    dest: "/etc/doas.conf"
+    line: "permit nopass {{ item.name }} as root"
+    regexp: '^permit .* {{ item.name }} .*'
+    state: "present"
+  when: item.become == True and ansible_distribution == "OpenBSD"
+  with_items: "{{users}}"
+

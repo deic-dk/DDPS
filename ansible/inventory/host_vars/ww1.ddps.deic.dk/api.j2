@@ -1,0 +1,56 @@
+
+# {{ ansible_managed }} {{ ansible_date_time.date }}
+
+# See https://www.nginx.com/blog/rate-limiting-nginx/
+# limit_req_zone $binary_remote_addr zone=mylimit:64K rate=10r/s;
+
+server {
+	listen 80;
+	server_tokens        off;
+	server_name api.ddps.deic.dk;
+
+# add Strict-Transport-Security to prevent man in the middle attacks
+	add_header Strict-Transport-Security "max-age=31536000" always;
+
+# Rules should not exceed that
+	client_max_body_size 8K;
+
+# required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
+	chunked_transfer_encoding on;
+
+# While HTTP headers are case insensitive, methods must be uppercase
+	if ($request_method !~ ^(POST)$ )
+	{
+			return 444;
+	}
+
+	location / {
+		proxy_set_header X-Forwarded-Host $server_name;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_headers_hash_max_size 512;
+		proxy_headers_hash_bucket_size 128;
+
+		proxy_pass http://127.0.0.1:9990;
+
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+		add_header X-Frame-Options DENY;
+		add_header X-Content-Type-Options nosniff;
+		add_header X-Frame-Options "SAMEORIGIN";
+		add_header Referrer-Policy "strict-origin";
+		add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+		add_header X-XSS-Protection "1; mode=block";
+		add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
+	 }
+
+	location = /favicon.ico {
+		alias /opt/ddps_ui/web/images/favicon.ico;
+	}
+
+	location ~ /\.ht {
+		deny all;
+	}
+}
+

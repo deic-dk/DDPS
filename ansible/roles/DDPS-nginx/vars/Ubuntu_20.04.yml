@@ -1,0 +1,18 @@
+nginx_pkgs:
+  - bash-completion
+  - php7.4-cli
+  - php7.4-fpm
+  - php7.4-mysql
+  - php7.4-json
+  - php7.4-opcache
+  - php7.4-mbstring
+  - php7.4-xml
+  - php7.4-gd
+  - php7.4-curl
+  - php-pgsql
+  - nginx
+  - elinks
+  - links
+  - wget
+  - curl
+  - apache2-utils

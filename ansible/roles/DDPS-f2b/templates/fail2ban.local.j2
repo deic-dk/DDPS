@@ -1,0 +1,12 @@
+{{ ansible_managed | comment }}
+
+# /etc/fail2ban/fail2ban.local
+[Definition]
+ 
+# Options: dbfile
+# Notes.: Set the file for the fail2ban persistent data to be stored.
+#         A value of ":memory:" means database is only stored in memory
+#         and data is lost when fail2ban is stopped.
+#         A value of "None" disables the database.
+# Values: [ None :memory: FILE ] Default: /var/lib/fail2ban/fail2ban.sqlite3
+dbfile = /var/lib/fail2ban/fail2ban.sqlite3

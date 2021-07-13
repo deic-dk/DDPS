@@ -1,0 +1,16 @@
+---  
+- include_vars: "{{ inventory_dir }}/group_vars/all/deleteusers.yml"
+
+- name: Delete uses (Linux and OpenBSD)
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Dele any former users
+    user:
+      name: "{{ item.name }}"
+      state: absent
+      remove: yes
+    with_items: '{{formerusers}}'
+    when: 'formerusers|selectattr("name", "defined")|list|length >0'
+    # avoid error(s) when formerusers is empty

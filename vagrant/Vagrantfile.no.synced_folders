@@ -1,0 +1,66 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+	# disable VirtualBox Guest Additions as they fail to build during vagrant up
+	config.vbguest.auto_update = false
+
+	config.vm.define "fw1" do |fw1|
+		fw1.vm.box = "bento/ubuntu-20.04"
+		fw1.vm.hostname = "fw1.ddps.deic.dk"
+
+        fw1.vm.synced_folder ".", "/vagrant", disabled: true
+		fw1.vm.network "private_network", ip: "192.168.33.2"
+		fw1.vm.provider :virtualbox do |vb|
+			vb.name = "fw1"
+			vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"]
+		end
+        config.vm.provision "shell" do |s|
+          ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_ed25519.pub").first.strip
+          s.inline = <<-SHELL
+            getent passwd ansible || {
+              adduser --uid 8888 --home /home/ansible --shell /bin/bash --gecos "ansible user" --disabled-password ansible
+              usermod -a -G sudo  ansible
+              mkdir -p /home/ansible/.ssh /root/.ssh
+              echo #{ssh_pub_key} >> /home/ansible/.ssh/authorized_keys
+              chown -R ansible /home/ansible
+              chmod 700 /home/ansible/.ssh /home/ansible/.ssh/*
+              echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+              echo #{ssh_pub_key} >> /root/.ssh/authorized_keys
+            }
+          SHELL
+        end
+	end
+	config.vm.define "ww1" do |ww1|
+		ww1.vm.box = "bento/ubuntu-20.04"
+		ww1.vm.hostname = "ww1.ddps.deic.dk"
+
+		ww1.vm.network :forwarded_port, guest: 80, host: 8080, id: 'http'
+		ww1.vm.network :forwarded_port, guest: 443, host: 8443, id: 'https'
+		ww1.vm.network :forwarded_port, guest: 5432, host: 5432, id: 'postgres'
+
+        ww1.vm.synced_folder ".", "/vagrant", disabled: true
+        ww1.vm.network "private_network", ip: "192.168.33.12"
+		ww1.vm.provider :virtualbox do |vb|
+			vb.name = "ww1"
+			vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"]
+		end
+        config.vm.provision "shell" do |s|
+          ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_ed25519.pub").first.strip
+          s.inline = <<-SHELL
+            getent passwd ansible || {
+              adduser --uid 8888 --home /home/ansible --shell /bin/bash --gecos "ansible user" --disabled-password ansible
+              usermod -a -G sudo  ansible
+              mkdir -p /home/ansible/.ssh /root/.ssh
+              echo #{ssh_pub_key} >> /home/ansible/.ssh/authorized_keys
+              chown -R ansible /home/ansible
+              chmod 700 /home/ansible/.ssh /home/ansible/.ssh/*
+              echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+              echo #{ssh_pub_key} >> /root/.ssh/authorized_keys
+            }
+          SHELL
+        end
+	end
+end

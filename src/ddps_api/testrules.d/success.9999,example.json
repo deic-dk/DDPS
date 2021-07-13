@@ -1,0 +1,16 @@
+{
+  "durationminutes" : "10",
+  "destinationport": "<=79 >=81&<=432 >=434",
+  "sourceport": "",
+  "icmptype": "",
+  "icmpcode": "",
+  "packetlength": "",
+  "dscp": "",
+  "description": "Web server rules",
+  "destinationprefix": "10.0.0.10/32",
+  "sourceprefix": "0.0.0.0/0",
+  "thenaction": "discard",
+  "fragmentencoding": "dont-fragment is-fragment first-fragment last-fragment",
+  "ipprotocol": "=6",
+  "tcpflags": ""
+}

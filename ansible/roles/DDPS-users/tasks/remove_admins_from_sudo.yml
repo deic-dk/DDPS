@@ -1,0 +1,24 @@
+---
+- include_vars: "{{ inventory_dir }}/group_vars/all/deleteusers.yml"
+
+- name: "Remove Ubuntu admins from sudoers"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: "Remove admins from sudoers file"
+    lineinfile: 
+      dest: "/etc/sudoers"
+      regexp: '{{ item.name }}.*'
+      state: absent
+    with_items: "{{ formerusers }}"
+    when: 'formerusers|selectattr("name", "defined")|list|length >0'
+  
+  - name: "Remove Ubuntu admins from sudoers.d directory"
+    file:
+      path: "/etc/sudoers.d/{{ item.name }}"
+      state: absent
+    with_items: "{{ formerusers }}"
+    when: 'formerusers|selectattr("name", "defined")|list|length >0'
+
+  when: ansible_distribution == 'Ubuntu'

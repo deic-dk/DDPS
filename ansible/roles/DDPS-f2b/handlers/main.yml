@@ -1,0 +1,8 @@
+# handlers file for fail2ban
+---
+- name: restart fail2ban
+  become: true
+  service:
+    name: fail2ban
+    state: restarted
+  when: service_default_state | default('started') == 'started'

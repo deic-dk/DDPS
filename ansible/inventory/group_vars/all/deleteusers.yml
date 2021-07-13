@@ -1,0 +1,7 @@
+---
+# TODO: there must be at least one name otherwise task deleting former ... in deleteusers.yml fails
+formerusers:
+  # name: user2
+  # name: user5
+  # name: user6
+

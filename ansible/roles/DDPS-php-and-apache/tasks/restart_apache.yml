@@ -1,0 +1,8 @@
+---
+- name: Populate service facts
+  service_facts:
+- name: Restart apache if installed
+  service:
+    name: apache
+    state: restarted
+  when: "'apache.service' in services"

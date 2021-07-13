@@ -1,0 +1,14 @@
+---
+- include_vars: "{{ inventory_dir }}/group_vars/all/deleteusers.yml"
+
+- name: "Remove deleted OpenBSD admins from doas.conf"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  lineinfile: 
+    dest: "/etc/doas.conf"
+    regexp: '.* {{ item.name }} .*'
+    state: absent
+  with_items: "{{formerusers}}"
+  when: ansible_distribution == "OpenBSD" and 'formerusers|selectattr("name", "defined")|list|length >0'
+

@@ -1,0 +1,9 @@
+[all]
+# ww1.ddps.deic.dk    ansible_host=172.22.86.10
+# bgp1.ddps.deic.dk   ansible_host=172.22.86.21
+ww1.ddps.deic.dk    ansible_host=192.168.33.12
+fw1.ddps.deic.dk    ansible_host=192.168.33.2    
+[all:vars]
+    ansible_python_interpreter=/usr/bin/python3
+    ansible_user=ansible
+	ansible_connection=ssh

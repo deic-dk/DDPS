@@ -1,0 +1,21 @@
+[Unit]
+Description=DDPS Database rules to BGP flowspec
+Documentation=man:db2bgp(1)
+Documentation=https://github.com/.../.../...
+After=network.target
+ConditionPathExists=/opt/db2bgp/etc/
+
+[Service]
+# ExecStart etc runs as _ddpsusr_:_ddpsgrp_
+# If the files lock, shutdown and reload cannot
+# be unlinked the process fails
+Type=forking
+User=_ddpsusr_
+Group=_ddpsgrp_
+ExecStart=/opt/db2bgp/bin/db2bgp.pl -D
+ExecStop=/usr/bin/touch _shutdown_
+ExecReload=/usr/bin/touch _reload_
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

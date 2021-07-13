@@ -1,0 +1,23 @@
+---  
+- set_fact:
+    use_become_method: "doas"
+    bash_path: "/usr/local/bin/bash"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+    bash_path: "/bin/bash"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: User, SSH public key and privilegie escalation management for OpenBSD and Ubuntu
+  include: "{{ item_task }}"
+  with_items:
+      - add_required_pkgs.yml
+      - add_users.yml
+      - add_admins_to_doas.yml
+      - add_admins_to_sudo.yml
+      - delete_users.yml
+      - remove_admins_from_doas.yml
+      - remove_admins_from_sudo.yml
+      - print_list_of_users_with_password.yml
+  loop_control:
+    loop_var: item_task

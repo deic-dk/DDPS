@@ -1,0 +1,33 @@
+---
+- name: "Install patches and updates on Ubuntu"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Run apt update; apt -y upgrade; apt -y dist-upgrade; apt -y autoremove
+    apt:
+      name: '*'
+      state: latest
+      update_cache: yes
+      autoremove: yes
+      autoclean: yes
+    when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+  
+  - name: Reboot box if kernel/libs updated and requested by the system
+    shell: "[ -f /var/run/reboot-required ]"
+    failed_when: False
+    register: reboot_required
+    changed_when: reboot_required.rc == 0
+
+  - name: Reboot Server if Necessary
+    command: shutdown -r now "Ansible Updates Triggered"
+    become: true
+    async: 309
+    poll: 0
+    when: reboot_required.rc == 0
+
+  - name: Wait for system to become reachable again
+    wait_for_connection:
+      delay: 10
+      timeout: 300
+  

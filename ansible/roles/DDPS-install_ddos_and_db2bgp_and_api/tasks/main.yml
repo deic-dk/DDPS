@@ -1,0 +1,20 @@
+---
+#- name: Set lock
+#  include: "../../roles/prevent_simultaneous_deploys/tasks/pre_tasks.yml"
+
+# default become_method sudo shadows for 'doas' so it aparently has to be set explicit
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: "Common tasks for installing and configuring software"
+  include: "{{ item_task }}"
+  with_items:
+    - make_install.yml
+  loop_control:
+    loop_var: item_task
+#- name: Release lock
+#  include: "../../prevent_simultaneous_deploys/tasks/post_tasks.yml"

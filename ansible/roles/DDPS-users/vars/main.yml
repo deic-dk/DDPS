@@ -1,0 +1,6 @@
+---
+# provisioning vars
+
+# lock file for role
+lock_file: "{{ ansible_env.HOME }}/.lock"
+

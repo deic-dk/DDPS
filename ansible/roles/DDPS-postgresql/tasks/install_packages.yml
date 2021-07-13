@@ -1,0 +1,19 @@
+---
+- name: "Install postgresql packages"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Read OS specific package list for "{{ ansible_distribution }}_{{ ansible_distribution_version }}"
+    include_vars: "{{ ansible_distribution }}_{{ ansible_distribution_version }}.yml"
+
+  - debug:
+      msg: "Postgresql_packages = {{ postgresql_packages }}"
+
+  - name: Install PostgreSQL
+    package:
+      name: 
+        "{{ postgresql_packages }}"
+      state: present
+# when: ansible_os_family == 'Ubuntu'
+

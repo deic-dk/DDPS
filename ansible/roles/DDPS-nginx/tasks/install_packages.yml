@@ -1,0 +1,17 @@
+---
+- name: "Install php packages"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Read OS specific package list for "{{ ansible_distribution }}_{{ ansible_distribution_version }}"
+    include_vars: "{{ ansible_distribution }}_{{ ansible_distribution_version }}.yml"
+  - debug:
+      msg: "ansible_os_family: {{ ansible_os_family }}, nginx_pkgs: {{ nginx_pkgs }}"
+
+  - name: Install packages
+    package:
+      name: 
+        "{{ nginx_pkgs }}"
+      state: present
+

@@ -1,0 +1,29 @@
+
+Smarty requires write access to template_c, where a cached version of the UI elements (as a php script sort of) is stored.
+
+Not good for security, but what if we compile only when needed, and set the expire time to never (-1)?
+
+See https://www.smarty.net/forums/viewtopic.php?p=60308
+
+nginx requires a writable log file, my experiments with a unix:named pipe doesn't turn up successful: rsyslog cannot read from such a device, and requires a unix:socket which nginx cannot write to.
+
+This link - https://syshero.org/2013-11-26-nginx-syslog-ing-without-breaking-the-bank-or/ - might be helpful. It would require an other syslog than the default one, There are dragons here too, but it is well documented.
+
+Syslog ng installation - latest - is described here: https://www.syslog-ng.com/community/b/blog/posts/installing-the-latest-syslog-ng-on-ubuntu-and-other-deb-distributions
+
+With these two issues solved, we will be immune to infection from a hacker, and the only outstanding problem would be pollution and exploitation of the database.
+
+Still starting the dam nginx from systemd is also a heck, see http://0pointer.de/blog/projects/changing-roots and https://wiki.archlinux.org/index.php/Systemd-nspawn
+
+Bind mount is described here https://backdrift.org/how-to-use-bind-mounts-in-linux
+
+A secure php nginx lets encrypt is described here https://www.vennedey.net/resources/3-Secure-webspaces-with-NGINX-PHP-FPM-chroots-and-Lets-Encrypt and https://www.howtoforge.com/php-fpm-nginx-security-in-shared-hosting-environments-debian-ubuntu. config for a chrooted nginx is here https://github.com/doublerebel/nginx-chroot/blob/master/nginx-chroot.sh
+
+setting up chroot here https://bash.cyberciti.biz/web-server/nginx-chroot-helper-bash-shell-script/
+https://www.cyberciti.biz/faq/howto-run-nginx-in-a-chroot-jail/
+
+shroot is http://logan.tw/posts/2018/02/24/manage-chroot-environments-with-schroot/, https://wiki.ubuntu.com/DebootstrapChroot and https://vwangsf.medium.com/setting-up-an-ubuntu-chroot-on-your-linux-distro-250844da6573
+
+The alternative is only to allow access to the DDOS_app from within a VPN connection.
+
+

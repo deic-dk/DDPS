@@ -1,0 +1,4 @@
+---
+# Assume non production environment as the default production is 'prod'
+
+env: vagrant

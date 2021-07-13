@@ -1,0 +1,6 @@
+#
+# Internal systems at SSI
+#
+./etc/*
+./usr/local/bin/daily_*
+./usr/local/etc/daily_*

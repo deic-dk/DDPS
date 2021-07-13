@@ -1,0 +1,38 @@
+---
+- name: "Check if {{ DDPS_PREFIX }}/src exists ... "
+  stat:
+    path: "{{ DDPS_PREFIX }}/src"
+  register: ddps_prefix_src_1
+  delegate_to: localhost
+
+- name: "Synchronize source from {{ DDPS_PREFIX }}/src/ to /tmp"
+  ansible.posix.synchronize:
+    src: "{{ DDPS_PREFIX }}/src/"
+    dest: /tmp/src
+  when:
+    - ddps_prefix_src_1.stat.exists
+
+- name: "Check if {{ inventory_dir }}/../../src exists ... "
+  stat:
+    path: "{{ inventory_dir }}/../../src"
+  register: ddps_prefix_src_2
+  delegate_to: localhost
+
+- name: "Synchronize source from {{ inventory_dir }}/../../src to /tmp"
+  ansible.posix.synchronize:
+    src: "{{ inventory_dir }}/../../src"
+    dest: /tmp/
+  when:
+    - ddps_prefix_src_2.stat.exists
+
+# Run `install` target as root
+- make:
+    chdir: /tmp/src
+    target: install
+  become: yes
+  become_method: "{{ use_become_method }}"
+  become_user: root
+  register: make_output
+
+- debug:
+    msg: "Output from install: {{ make_output.stdout }}"

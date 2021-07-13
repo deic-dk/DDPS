@@ -1,0 +1,51 @@
+---
+- name: "Build locales ... "
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Set locale(s) ...
+    blockinfile:
+      insertafter: "# this file, you need to rerun locale-gen"
+      path: /etc/locale.gen
+      block: |
+        da_DK ISO-8859-1
+        da_DK.UTF-8 UTF-8
+        en_GB.UTF-8 UTF-8
+        en_US.UTF-8 UTF-8
+    register: locale_file
+    
+  # name: Copy /usr/share/i18n/SUPPORTED to /etc/locale.gen
+  # copy:
+  #   src: /usr/share/i18n/SUPPORTED
+  #   dest: /etc/locale.gen
+  #   remote_src: yes
+  # register: copy_file
+  
+  - name: execute locale-gen
+    command: locale-gen
+    when: locale_file.changed
+  
+  - name: Ensure the locale exists
+    locale_gen:
+      name: "{{item}}"
+      state: present
+    with_items:
+      - en_US.UTF-8
+      - en_GB.UTF-8
+      - da_DK.UTF-8
+
+  - name: set as default locale
+    command: update-locale LANG=en_GB.UTF-8
+
+# - name: Ensure a locale exists
+#   community.general.locale_gen:
+#     name: da_DK.UTF-8
+#     state: present
+#
+#- name: Ensure the locale exists
+# locale_gen:
+#   name: da_DK.UTF-8
+#   state: present
+# name: set as default locale
+# command: localectl set-locale LANG=da_DK.UTF-8 LC_ALL=da_DK.UTF-8

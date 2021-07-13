@@ -1,0 +1,485 @@
+#! /usr/bin/env bash
+
+MYNAME=`basename $0`
+MY_LOGFILE=/var/log/${MYNAME}.log
+VERBOSE=FALSE
+VERBOSE="TRUE"
+log2syslog="logger -t world -p mail.crit "
+
+BACKUP_ARCHIVE="/tmp/dumpall.gz"
+DEFAULT_DB_VALUES="./dumpall.tgz"
+SQL_FUNCTIONS="../ddps_endpoints.sql"
+DATAFILE=./test_flowspec_type.sql
+
+STATUSFILE=/tmp/.status
+echo PASSED > $STATUSFILE
+
+# functions
+logit() {
+# purpose	  : Timestamp output
+# arguments	  : Line og stream
+# return value: None
+# see also	  :
+	LOGIT_NOW="`date '+%H:%M:%S (%d/%m)'`"
+	STRING="$*"
+
+	if [ -n "${STRING}" ]; then
+		$log2syslog "${STRING}"
+		if [ "${VERBOSE}" = "TRUE" ]; then
+			$echo "${LOGIT_NOW} ${STRING}"
+		fi
+	else
+		while read LINE
+		do
+			if [ -n "${LINE}" ]; then
+				$log2syslog "${line}"
+				if [ "${VERBOSE}" = "TRUE" ]; then
+					$echo "${LOGIT_NOW} ${LINE}"
+				fi
+			fi
+		done
+	fi
+}
+
+usage() {
+# purpose	  : Script usage
+# arguments	  : none
+# return value: none
+# see also	  :
+echo $*
+cat << EOF
+	Usage: `basename $0` 
+
+	See src for more info
+EOF
+	exit 2
+}
+
+clean_f () {
+# purpose	  : Clean-up on trapping (signal)
+# arguments	  : None
+# return value: None
+# see also	  :
+	$echo trapped -- hell dont do so
+	/bin/rm -f $TMPFILE $MAILFILE
+}
+
+function db_restore()
+{
+	local TMPFILE=$( mktemp )
+	gunzip -f ${BACKUP_ARCHIVE}
+	case $? in
+		0)	logit extracted ${BACKUP_ARCHIVE}
+			;;
+		*) logit "failed to extract archive ${BACKUP_ARCHIVE}"
+			exit 127
+			;;
+	esac
+
+	RESTORE_FILE="/tmp/$( basename  ${BACKUP_ARCHIVE} .gz)"
+	( echo "psql -d postgres -f $RESTORE_FILE"|su - postgres ) &>${TMPFILE}
+	case $? in
+		0)	logit "database restored to state before testing"
+			;;
+		*)	logit "failed to restore database"
+			logit < $TMPFILE
+			logit "See $RESTORE_FILE and  $TMPFILE"
+			exit 127
+			;;
+	esac
+	rm -f $RESTORE_FILE $TMPFILE
+}
+
+function test_functions()
+{
+	logit "########### Begin testing functions ... "
+
+	. assert.sh
+
+	# TODO laves om så test_ddps_function kan anvendes
+	test_flowspec_expressions
+
+	test_ddps_function ./test_ddps_login_function.sql ddps_login
+	test_ddps_function ./test_ddps_rules_function.sql ddps_add_rule
+	
+	# TODO test_ddps_function ./test_list_rules.sql ddps_list_rules (all, active x wrong / ok adminid, customerid)
+
+	test_ddps_function ./test_ddps_withdraw_rule.sql ddps_withdraw_rule
+
+	logit "########### End testing functions ... "
+}
+
+function test_ddps_function()
+{
+	DATAFILE=$1
+	INFO=$2
+
+	logit "Testing $INFO"
+
+	ERRFILE=$( mktemp )
+    let LINES=$(  sed '/^#/d; /^$/d' $DATAFILE|wc -l|tr -d ' ')
+	echo 0 > $ERRFILE
+	local EXIT_STATUS=""
+	local SQL=$( mktemp --suffix=.sql )
+	local OUTFILE=$( mktemp )
+	chown postgres:postgres $OUTFILE
+	local ERRORS=0
+	local EXIT_STATUS=0
+	cat $DATAFILE | sed '/^$/d; /^#/d' | while read A_LINE
+	do
+		IFS='|'
+		read -ra ADDR <<< "$A_LINE"
+		MSG="${ADDR[0]}"
+		EXPECTED="${ADDR[1]}"
+		LINE="${ADDR[2]}"
+		IFS=' '
+
+		echo $LINE > ${SQL}
+		chown postgres:postgres ${SQL}
+		echo "psql -v ON_ERROR_STOP=ON -d flows -t -f ${SQL} &> ${OUTFILE}"|su - postgres
+		EXIT_STATUS=$?
+		OUTPUT="$( cat $OUTFILE )"
+		# assert_contain checks whether the first argument contains the second one.
+		if [ -z "${EXPECTED}" ]; then
+			#logit "expected must be empty"
+			assert_empty "${OUTPUT}"
+		else
+			#logit "expected must be NON empty"
+			if [ -z "${OUTPUT}" ]; then
+				assert_not_empty "${OUTPUT}"
+			else
+				assert_contain "${OUTPUT}" "$EXPECTED"
+			fi
+		fi
+		EXIT_STATUS=$?
+		case $EXIT_STATUS in
+			0)	log_success "$INFO ok: $MSG"
+				#log_success "Output: '$OUTPUT', expected '$EXPECTED'"
+				;;
+			*)	log_failure "$INFO fail: $MSG expected $EXPECTED not found in output"
+				log_failure "SQL: $LINE"
+				log_failure "Output: $OUTPUT"
+				echo FAILED > /tmp/.status
+				;;
+		esac
+	done
+	rm -f ${OUTFILE} ${SQL} ${ERRFILE}
+}
+
+function test_flowspec_expressions()
+{
+    local TMPFILE=$( mktemp )
+    let LINES=$(  sed '/^#/d; /^$/d' $DATAFILE|wc -l|tr -d ' ')
+    #echo "reading $LINES sql statements from $( realpath $DATAFILE )"
+    ERRFILE=$( mktemp )
+    echo 0 > $ERRFILE
+
+    sed '/^#/d; /^$/d' $DATAFILE | while read EXPECTED LINE
+    do
+        RES=$( echo "psql -d flows -t -c \"$LINE\""|sudo su - postgres | sed 's/^[[:space:]]*//g' )
+        case $EXPECTED in
+            # Return values from functions: boolean: t/f, text ok/something-else
+            "ok"|"t"|"f") 
+				assert_eq "$EXPECTED" "$RES" "Fail: $LINE" || {
+					echo 1 > $ERRFILE
+					echo 1 > $ERRFILE; echo FAILED > $STATUSFILE
+				}
+                ;;
+            *)	assert_not_eq  "$EXPECTED" "$RES" "Fail: $LINE" || {
+					echo 1 > $ERRFILE; echo FAILED > $STATUSFILE
+				}
+                ;;
+        esac
+    done
+    ERRORS=$( cat $ERRFILE )
+    rm -f $ERRFILE
+    case $ERRORS in
+        0)  log_success "flowspec_types $LINES fail/pass test PASSED ok"
+            ;;
+        *)  log_failure "flowspec_types $LINES /pass with some test FAILED"
+			echo FAILED > $STATUSFILE
+            ;;
+    esac
+	rm -f ${TMPFILE}
+}
+
+function do_backup()
+{
+	logit "creating ${BACKUP_ARCHIVE} ... "
+	rm -f ${BACKUP_ARCHIVE}
+	echo "pg_dumpall --clean --if-exists | gzip -9 > ${BACKUP_ARCHIVE}" | su - postgres
+	gunzip -t ${BACKUP_ARCHIVE}
+	case $? in
+		0)	logit "backup archive ${BACKUP_ARCHIVE}"
+			chown postgres:postgres "${BACKUP_ARCHIVE}"
+			;;
+		*)	logit "backup to ${BACKUP_ARCHIVE} failed"
+			exit 127
+	esac
+}
+
+function load_wellknown_database_dump()
+{
+	logit "loading ${DEFAULT_DB_VALUES} ..."
+	local TMPFILE=$( mktemp )
+	local OUTPUT=$( mktemp )
+	chown postgres:postgres $OUTPUT
+	if [ -f "${DEFAULT_DB_VALUES}" ]; then
+		gunzip -c "${DEFAULT_DB_VALUES}" > ${TMPFILE}
+		chown postgres:postgres ${TMPFILE}
+		echo "psql -d postgres -f ${TMPFILE} &> $OUTPUT"|su - postgres
+		case $? in
+			0)	logit "loaded $DEFAULT_DB_VALUES ok"
+				;;
+			*)	logit "failed to load $DEFAULT_DB_VALUES"
+				cat $OUTPUT
+				logit "bye"
+				exit 127
+				;;
+		esac
+		rm -f $TMPFILE $OUTPUT
+	else
+		logit "file ${DEFAULT_DB_VALUES} not found, bye"
+		exit 127
+	fi
+}
+
+function terminate_announcements()
+{
+	logit stopping announcements ...
+	( /opt/db2bgp/bin/ddpsctl panic ) > /dev/null 2>&1
+}
+
+function stop_db_connections()
+{
+	logit "Stopping all database connections ... "
+	local SQL=$( mktemp --suffix .sql )
+	cat <<-EOF > ${SQL}
+	SELECT
+		pg_terminate_backend(pg_stat_activity.pid)
+	FROM
+		pg_stat_activity
+	WHERE
+		pg_stat_activity.datname = 'flows'
+		AND pid <> pg_backend_pid();
+	SELECT
+		pg_terminate_backend(pid)
+	FROM
+		pg_stat_activity
+	WHERE
+		datname = 'flows';
+EOF
+	chown postgres:postgres ${SQL}
+	(
+		echo "psql -d flows -f ${SQL}"|su - postgres 
+	)  > /dev/null 2>&1
+	# This causes several errors on connectivity to be printed to stdout which
+	# should be ignored as they are the result of the sql ...
+	rm -f ${SQL}
+}
+
+function main()
+{
+	# check on how to suppress newline (found in an Oracle installation script ca 1992)
+	echo="/bin/echo"
+	case ${N}$C in
+		"") if $echo "\c" | grep c >/dev/null 2>&1; then
+			N='-n'
+		else
+			C='\c'
+		fi ;;
+	esac
+
+	logit "Starting $0 $*"
+	#
+	# Process arguments
+	#
+	SLEEP=0
+	while getopts vi opt
+	do
+	case $opt in
+		v)	VERBOSE=TRUE
+		;;
+		i)	SLEEP=60
+		;;
+		*)	echo "usage: $0 [-v]"
+			exit
+		;;
+	esac
+	done
+	shift `expr $OPTIND - 1`
+
+	case $( whoami ) in
+		root)	logit running as root
+		;;
+		*)	logit run as root; exit 1
+		::
+	esac
+
+	# Assume we start in db2bgp and is called from make
+	#
+
+	HERE=$( basename $( pwd ) )
+	logit "you are here: $HERE ... "
+	case $HERE in
+		tests)	:
+			;;
+		db2bgp) cd tests
+			;;
+		*)	echo please start from db2bgp, you are in $HERE
+			exit 127
+			;;
+	esac
+	for FILE in ${SQL_FUNCTIONS} ${DEFAULT_DB_VALUES} ${DATAFILE}
+	do
+		if [ ! -f "${FILE}" ]; then
+			echo "Archive '${FILE}' not found bye"
+			exit 127
+		else
+			cp ${FILE} /tmp/
+		fi
+	done
+	SQL_FUNCTIONS=/tmp/$( basename $SQL_FUNCTIONS )
+	DEFAULT_DB_VALUES=/tmp/$( basename $DEFAULT_DB_VALUES )
+	DATAFILE=/tmp/$( basename $DATAFILE )
+
+	# something new introduced in 20.04
+	# see
+	# https://askubuntu.com/questions/1250974/user-root-cant-write-to-file-in-tmp-owned-by-someone-else-in-20-04-but-can-in
+	sudo sysctl fs.protected_regular=0
+
+	do_backup
+	stop_db_connections
+	logit stopping service db2bgp ... 
+	service db2bgp stop
+	terminate_announcements
+	load_wellknown_database_dump
+
+	logit "preparing tests ... "
+	logit "loading sql functions from ${SQL_FUNCTIONS} ... "
+	local OUTFILE=$( mktemp )
+	chown postgres:postgres $OUTFILE
+	echo "psql -v ON_ERROR_STOP=ON  -d flows < ${SQL_FUNCTIONS} >& $OUTFILE "| su - postgres
+	case $? in
+		0)	logit "loaded sql ok"
+			rm -f $OUTFILE
+			;;
+		*)	logit "fail to load sql file '${SQL_FUNCTIONS}', errors:"
+			logit < $OUTFILE
+			rm -f $OUTFILE
+			exit 127
+			;;
+	esac
+
+	logit starting service db2bgp ... 
+	service db2bgp start
+
+	test_functions
+
+	$echo $N "Sleeping $SLEEP, press <ctrl>-z and examin database then resume to procede with restore ...  $C"
+	sleep $SLEEP
+
+	stop_db_connections
+	terminate_announcements
+	db_restore
+	logit "starting service db2bgp ... "
+	service db2bgp start
+
+	logit "Overall status according to STATUS file: $( cat $STATUSFILE )"
+	rm -f  $STATUSFILE
+
+	exit 0
+}
+
+################################################################################
+# Main
+################################################################################
+#
+# clean up on trap(s)
+#
+trap clean_f 1 2 3 13 15
+
+main $*
+
+
+# Modified BSD License
+# ====================
+# 
+# Copyright © 2019, Niels Thomas Haugård
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright
+#	 notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#	 notice, this list of conditions and the following disclaimer in the
+#	 documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the  haugaard.net inc nor the
+#	 names of its contributors may be used to endorse or promote products
+#	 derived from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL Niels Thomas Haugård BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+exit 0
+
+
+echo "---- Testing ddps_addrule (TRUE) ------------------------------------------"
+echo "select public.ddps_addrule(
+now(), 						--  1  validfrom...............: now()
+now() + '1 min'::interval,	--  2  validto.................: now() + '1 min'::interval
+'in',						--  3  direction...............: 'in'
+'',							--  4  srcordestport...........: ''
+'=80',						--  5  destinationport.........: '=80'
+'',							--  6  sourceport..............: ''
+'',							--  7  icmptype................: ''
+'',							--  8  icmpcode................: ''
+'',							--  9  packetlength............: '=1470'
+'=60',						-- 10  dscp....................: ''
+'Block port 80',			-- 11  description.............: 'Block port 80'
+'e8f36924-0447-4e8c-bde2-ea9610c01994', -- 12  uuid_customerid.........: 'e8f36924-0447-4e8c-bde2-ea9610c01994'
+'9800d861-25f4-4d75-a17c-8918a9b3a9bd', -- 13  uuid_administratorid....: '9800d861-25f4-4d75-a17c-8918a9b3a9bd'
+'10.0.0.1/32',				-- 14  destinationprefix.......: '10.0.0.1/32'
+'0.0.0.0/0',				-- 15  sourceprefix............: '0.0.0.0/0'
+'discard',					-- 16  thenaction..............: 'discard'
+'',							-- 17  fragmentencoding........: ''
+'=6',						-- 18  ipprotocol..............: '=6'
+''							-- 19  tcpflags................: ''
+);"|psql -v ON_ERROR_STOP=ON  -d flows -t
+echo "---------------------------------------------------------------------------"
+
+echo "---- Testing ddps_addrule (FALSE) ------------------------------------------"
+echo "select public.ddps_addrule(
+now(), 						--  1  validfrom...............: now()
+now() + '1 min'::interval,	--  2  validto.................: now() + '1 min'::interval
+'in',						--  3  direction...............: 'in'
+'',							--  4  srcordestport...........: ''
+'=80',						--  5  destinationport.........: '=80'
+'',							--  6  sourceport..............: ''
+'',							--  7  icmptype................: ''
+'',							--  8  icmpcode................: ''
+'',							--  9  packetlength............: '=1470'
+'=60',						-- 10  dscp....................: ''
+'DoNt Go In --- Block port 80',			-- 11  description.............: 'Block port 80'
+'e8f36925-0447-4e8c-bde2-ea9610c01994', -- 12  uuid_customerid.........: 'e8f36924-0447-4e8c-bde2-ea9610c01994'
+'9800d861-25f4-4d75-a17c-8918a9b3a9bd', -- 13  uuid_administratorid....: '9800d861-25f4-4d75-a17c-8918a9b3a9bd'
+'10.0.0.1/32',				-- 14  destinationprefix.......: '10.0.0.1/32'
+'0.0.0.0/0',				-- 15  sourceprefix............: '0.0.0.0/0'
+'discard',					-- 16  thenaction..............: 'discard'
+'',							-- 17  fragmentencoding........: ''
+'=6',						-- 18  ipprotocol..............: '=6'
+''							-- 19  tcpflags................: ''
+
+);"|psql -v ON_ERROR_STOP=ON  -d flows -t
+echo "---------------------------------------------------------------------------"
+

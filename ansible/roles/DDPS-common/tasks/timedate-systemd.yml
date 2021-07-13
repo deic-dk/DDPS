@@ -1,0 +1,25 @@
+---
+- name: "Set time on systemd / Ubuntu"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Start time services
+    service: name=systemd-timesyncd state=started enabled=yes
+  
+  - name: Run timedatectl status
+    command: /usr/bin/timedatectl status
+    changed_when: False
+    check_mode: no
+    register: timedatectl_result
+  
+  - name: Copy timesyncd config
+    copy: src=files/timesyncd.conf dest=/etc/systemd/timesyncd.conf
+  
+  - name: Set timezone
+    command: /usr/bin/timedatectl set-timezone Europe/Copenhagen
+    when: "'Europe/Copenhagen' not in timedatectl_result.stdout"
+  
+  - name: Enable ntp
+    command: /usr/bin/timedatectl set-ntp true
+    when: "'Network time on: no' in timedatectl_result.stdout"

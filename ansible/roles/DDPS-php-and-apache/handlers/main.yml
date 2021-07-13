@@ -1,0 +1,15 @@
+---
+# default become_method sudo shadows for 'doas' so it aparently has to be set explicit
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: restart apache2
+  become: true
+  become_user: "root"
+  service:
+    name: apache2
+    state: restarted

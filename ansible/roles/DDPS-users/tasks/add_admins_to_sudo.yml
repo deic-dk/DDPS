@@ -1,0 +1,16 @@
+---
+- include_vars: "{{ inventory_dir }}/group_vars/all/users.yml"
+
+- name: "Allways setup sudo for administrators"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  template:
+    src: sudoers.d.user.js
+    dest: /etc/sudoers.d/{{ item.name }}
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  with_items: "{{users}}"
+  when: item.become == True and ansible_distribution == "Ubuntu"
+

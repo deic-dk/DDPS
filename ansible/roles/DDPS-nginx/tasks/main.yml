@@ -1,0 +1,29 @@
+---
+- set_fact:
+    use_ssl: "{% if env == 'prod' %} 'yes' {% else %} 'no' {% endif %}"
+    is_vagrant: "{% if env == 'prod' %} 'no' {% else %} 'yes' {% endif %}"
+    db_restore: "{% if env == 'prod' %} 'no' {% else %} 'yes' {% endif %}"
+
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: print vars
+  debug:
+    msg: "item = ->{{ item }}<-"
+  with_items:
+    - "{{ is_vagrant }}"
+    - "{{ db_restore }}"
+    - "{{ use_ssl }}"
+
+- name: "Install php and restart apache"
+  include: "{{ item_task }}"
+  with_items:
+    - install_packages.yml
+    - configure_nginx.yml
+    # empty.yml
+  loop_control:
+    loop_var: item_task

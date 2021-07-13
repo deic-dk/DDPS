@@ -1,0 +1,15 @@
+---
+DDPS_PREFIX: /DDPS
+  # DDPS_UI_HOME: /opt/ddps_ui
+SERVERADMIN: webmaster@localhost
+DOCUMENTROOT: /opt/ddps_ui/web/www
+HTTP_PORT: 80
+DOMAIN: ddps
+
+# nginx / postfix / vagrant environment
+use_ssl: no
+restore_db: yes
+
+# Will enable postgres network login
+development: yes
+

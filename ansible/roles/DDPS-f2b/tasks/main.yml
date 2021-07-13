@@ -1,0 +1,79 @@
+---
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+- name: install fail2ban package
+  apt:
+    pkg: fail2ban
+    state: present
+  when: ansible_distribution=='Debian' or ansible_distribution=='Ubuntu'
+  become: true
+  become_user: "root"
+
+- name: copy fail2ban jail config
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  become_user: "root"
+
+- name: copy fail2ban local config
+  template:
+    src: fail2ban.local.j2
+    dest: /etc/fail2ban/fail2ban.local
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  become_user: "root"
+
+- name: copy fail2ban nginx jail config
+  copy:
+    src: nginx.conf
+    dest: /etc/fail2ban/jail.d/nginx.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  become_user: "root"
+  notify: restart fail2ban
+
+- name: copy fail2ban nginx 4xx config
+  copy:
+    src: nginx-4xx.conf
+    dest: /etc/fail2ban/filter.d/nginx-4xx.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  become_user: "root"
+  notify: restart fail2ban
+
+- name: copy fail2ban DDOS_app web config
+  copy:
+    src: ddps_ui.conf
+    dest: /etc/fail2ban/filter.d/ddps_ui.conf
+    owner: root
+    group: root
+    mode: 0644
+  become: true
+  become_user: "root"
+  notify: restart fail2ban
+
+# name: copy fail2ban DDOS_app API config
+# copy:
+#   src: ddps_ui.conf
+#   dest: /etc/fail2ban/filter.d/ddps_ui.conf
+#   owner: root
+#   group: root
+#   mode: 0644
+# become: true
+# become_user: "root"
+# notify: restart fail2ban
+

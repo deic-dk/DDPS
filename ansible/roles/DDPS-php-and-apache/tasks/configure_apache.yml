@@ -1,0 +1,75 @@
+---
+- name: "Install and configure apache2"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: install apache2
+    apt:
+      name: apache2
+      update_cache: yes
+      state: latest
+
+  - apache2_module:
+      state: absent
+      name: wsgi
+    notify:
+      - restart apache2
+
+  - apache2_module:
+      state: absent
+      name: wsgi
+    notify:
+      - restart apache2
+
+  - apache2_module:
+      state: absent
+      name: autoindex
+      force: True
+    notify:
+      - restart apache2
+
+  - apache2_module:
+      state: absent
+      name: mpm_worker
+      ignore_configcheck: True
+    notify:
+      - restart apache2
+
+  - apache2_module:
+      state: absent
+      name: dump_io
+      identifier: dumpio_module
+    notify:
+      - restart apache2
+
+  - name: enabled mod_rewrite
+    apache2_module:
+      name: rewrite
+      state: present
+    notify:
+      - restart apache2
+
+  - name: remove default configuration
+    file:
+      path: /etc/apache2/sites-enabled/000-default.conf
+      state: absent
+    notify:
+      - restart apache2
+        
+  - name: Apply DDPS configuration
+    template:
+      src: templates/{{ DOMAIN }}.conf.js2
+      dest: /etc/apache2/sites-available/{{ DOMAIN }}.conf
+      owner: root
+      group: root
+      mode: '0644'
+    notify:
+      - restart apache2
+
+  - name: a2ensite {{ DOMAIN }}
+    command: a2ensite "{{ DOMAIN }}"
+    notify:
+    - restart apache2
+
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'

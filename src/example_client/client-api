@@ -1,0 +1,64 @@
+#! /bin/bash
+#
+# vars
+USERNAME="CHANGE ME"
+PASSWORD="CHANGE ME"
+
+host="api.ddps.deic.dk"
+port=443
+port=80
+proto=https
+proto=http
+
+ROUTER_SIGNIN="${proto}://${host}:${port}/signin"
+ROUTER_ADDRULE="${proto}://${host}:${port}/addrule"
+ROUTER_REFRESH="${proto}://${host}:${port}/refresh"
+
+JSONFILE=/tmp/rule.json
+
+function get_jwt_token()
+{
+	TOKEN=$( curl -k -c - -s -X POST									\
+		-H 'Accept: application/json'								\
+		-H 'Content-Type: application/json'							\
+		--data "{\"username\":\"${USERNAME}\",\"password\":\"${PASSWORD}\"}" "${ROUTER_SIGNIN}" |
+		sed '/token/!d; s/.*token//g; s/[[:space:]]*//g'
+	)
+
+	case "${TOKEN}" in
+		'') logger  "FAIL getting jwt TOKEN = '$( echo ${TOKEN:0:41})'"
+			;;
+		*)	logger  "SUCCESS getting jwt TOKEN = '$( echo ${TOKEN:0:41})'"
+			;;
+	esac
+}
+
+function apply_rule()
+{
+	if [ -f "${JSONFILE}" ]; then
+		ADD_STATUS=$( curl -k -s -c /dev/null -H 'Accept: application/json' -H 'Content-Type: application/json'  \
+			--header "Cookie: token=${TOKEN}" -d @${JSONFILE} -X POST "${ROUTER_ADDRULE}" )
+	else
+		logger  "FATAL: $JSONFILE not found"
+		exit 127
+	fi
+	case "${ADD_STATUS}" in
+		"rule accepted") logger  "SUCCESS: $ADD_STATUS"
+			;;
+		*) 		logger  "FAIL: $ADD_STATUS"
+			;;
+	esac
+}
+
+function main()
+{
+
+	get_jwt_token
+	sleep 1
+	apply_rule 
+}
+
+main $*
+
+exit 0
+

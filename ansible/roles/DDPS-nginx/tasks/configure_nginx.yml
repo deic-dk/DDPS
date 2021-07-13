@@ -1,0 +1,145 @@
+---  
+- set_fact:
+    use_become_method: "doas"
+    bash_path: "/usr/local/bin/bash"
+    root_group: "wheel"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+    bash_path: "/bin/bash"
+    root_group: "root"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: "NGINX block"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - set_fact:
+    # Careful, here be dragons
+      www_nginx_conf_file: "{% if env == 'prod' %} www.https.j2 {% else %} www.j2 {% endif %}"
+      api_nginx_conf_file: "{% if env == 'prod' %} api.https.j2 {% else %} api.j2 {% endif %}"
+      key_file: "{% if env == 'prod' %} _etc_ssl_private_server.key {% else %} '' {% endif %}"
+      cert_file: "{% if env == 'prod' %} __ddps_deic_dk_cert.cer {% else %} '' {% endif %}"
+  - set_fact:
+      www_nginx_conf_path: "{{ inventory_dir }}/host_vars/{{ inventory_hostname }}/{{ www_nginx_conf_file | trim }}"
+      api_nginx_conf_path: "{{ inventory_dir }}/host_vars/{{ inventory_hostname }}/{{ api_nginx_conf_file | trim }}"
+      ssl_certificate_path:  "{{ inventory_dir }}/host_vars/{{ inventory_hostname }}/{{ cert_file | trim }}"
+      ssl_certificate_key_path: "{{ inventory_dir }}/host_vars/{{ inventory_hostname }}/{{ key_file | trim }}"
+
+  - name: "Copy certificate files ... "
+    copy:
+      src: "{{ item }}"
+      dest: "/etc/ssl/private/"
+      owner: root
+      group: root
+      mode: 600
+    with_items:
+      - "{{ ssl_certificate_path }}"
+      - "{{ ssl_certificate_key_path }}"
+    when: development|default(false)|bool == false
+
+  - name: Print paths
+    debug:
+      msg: "{{ item }}"
+    with_items:
+      - "www_nginx_conf_path ='{{ www_nginx_conf_path }}'"
+      - "ssl_certificate = '{{ ssl_certificate_path }}'"
+      - "ssl_certificate_key = '{{ ssl_certificate_key_path }}'"
+
+  - name: Environment
+    debug:
+      msg: "Using environment {{ env }}"
+
+  - name: "Create DDPS nginx GUI configuration"
+    template:
+      src: "{{ www_nginx_conf_path }}"
+      dest: "/etc/nginx/sites-available/{{ inventory_hostname }}"
+      mode: 0644
+      backup: yes
+  - name: "Add link to DDPS configuration ... "
+    file:
+      src: "/etc/nginx/sites-available/{{ inventory_hostname }}"
+      dest: "/etc/nginx/sites-enabled/{{ inventory_hostname }}"
+      owner: root
+      group: root
+      state: link
+
+  - name: "Create DDPS nginx API configuration"
+    template:
+      src: "{{ api_nginx_conf_path }}"
+      dest: "/etc/nginx/sites-available/api.ddps.deic.dk"
+      mode: 0644
+      backup: yes
+  - name: "Add link to DDPS configuration ... "
+    file:
+      src: "/etc/nginx/sites-available/api.ddps.deic.dk"
+      dest: "/etc/nginx/sites-enabled/api.ddps.deic.dk"
+      owner: root
+      group: root
+      state: link
+
+  - name: "Set server_tokens off in nginx.conf"
+    lineinfile:
+      path: /etc/nginx/nginx.conf
+      regexp: '^[ ]*server_tokens off;'
+      state: present
+      insertafter: '# server_tokens off;'
+      line: '	server_tokens off;'
+
+  - name: "modify nginx.conf ... "
+    blockinfile:
+      path: /etc/nginx/nginx.conf
+      insertafter: ".*include /etc/nginx/sites-enabled"
+      marker: "## {mark} added by ansible"
+      block: |2
+                ## 
+                # Size Limits & Buffer Overflows
+                client_body_buffer_size  1K;
+                client_header_buffer_size 1k;
+                client_max_body_size 1k;
+                large_client_header_buffers 4 32k;
+                # Timeouts
+                client_body_timeout   10;
+                client_header_timeout 10;
+                send_timeout          10;
+                # Directive describes the zone, in which the session states are
+                # stored i.e. store in slimits.  1m can handle 32000 sessions
+                # with 32 bytes/session, set to 5m x 32000 session 
+                limit_conn_zone $binary_remote_addr zone=addr:10m;
+                # Control maximum number of simultaneous connections for one
+                # session i.e.  restricts the amount of connections from a
+                # single ip address 
+                limit_conn addr 10;
+                ##
+
+  - name: "Add default config as warning f2b that acts up but /etc/hosts ... "
+    copy:
+      src: "files/index.html"
+      dest: "/var/www/html/index.html"
+      owner: www-data
+      group: www-data
+      mode: 0444
+    when: development|default(false)|bool == true
+
+  - name: "Start nginx"
+    service:
+      name: nginx
+      state: started
+  - name: check if default config exists, if not next tasks will be skipped
+    stat:
+      path: /etc/nginx/sites-enabled/default
+    register: fh
+  - name: "Check that connection (GET) returns status 200 on http://{{ inventory_hostname }}"
+    uri:
+      url: "http://{{ inventory_hostname }}"
+    when:
+      'fh.stat.exists == true'
+
+
+  - name: "Remove default configuration ... "
+    file:
+      path: "/etc/nginx/sites-enabled/default"
+      state: absent
+    when: development|default(false)|bool == true
+

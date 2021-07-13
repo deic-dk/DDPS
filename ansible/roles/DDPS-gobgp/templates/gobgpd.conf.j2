@@ -1,0 +1,27 @@
+#jinja2: lstrip_blocks: "False", trim_blocks: "False"
+{#
+	GoBGP config for DDPS
+#}
+{% if ansible_hostname|upper == "FW1" %}
+	{% set MY_ID = FW_ROUTER_ID %}
+	{% set PEER_ID = WW_ROUTER_ID %}
+{% else %}
+	{% set MY_ID = WW_ROUTER_ID %}
+	{% set PEER_ID = FW_ROUTER_ID %}
+{% endif %}
+# eBGP Configuration for {{ ansible_hostname|upper}}
+[global.config]
+  as = "{{ EBGP_AS }}"
+  router-id = "{{ MY_ID }}"
+
+[[neighbors]]
+  [neighbors.config]
+    neighbor-address = "{{ PEER_ID }}"
+    peer-as = "{{ IBGP_AS }}"
+  [neighbors.route-server.config]
+  [neighbors.transport.config]
+    local-address = "{{ MY_ID }}"
+  [[neighbors.afi-safis]]
+  [neighbors.afi-safis.config]
+    afi-safi-name = "{{ AFI_SAFI }}"
+# FILE MANAGD BY ANSIBLE

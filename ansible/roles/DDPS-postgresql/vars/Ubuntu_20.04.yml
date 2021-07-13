@@ -1,0 +1,6 @@
+postgresql_packages: 
+  - postgresql
+  - postgresql-contrib
+  - pspg
+  - postgresql-plperl-12
+

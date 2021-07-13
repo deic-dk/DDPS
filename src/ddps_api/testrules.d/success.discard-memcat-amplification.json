@@ -1,0 +1,16 @@
+{
+  "durationminutes" : "10",
+  "destinationport": "",
+  "sourceport": "=11211",
+  "icmptype": "",
+  "icmpcode": "",
+  "packetlength": "",
+  "dscp": "",
+  "description": "Discard memcached amplification",
+  "destinationprefix": "192.168.100.0/24",
+  "sourceprefix": "0.0.0.0/0",
+  "thenaction": "discard",
+  "fragmentencoding": "",
+  "ipprotocol": "=17",
+  "tcpflags": ""
+}

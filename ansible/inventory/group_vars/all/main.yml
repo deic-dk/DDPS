@@ -1,0 +1,9 @@
+---
+# defaults file for gobgp DDPS
+
+EBGP_AS: 64610
+IBGP_AS: 64610
+FW_ROUTER_ID: "192.168.33.2"
+WW_ROUTER_ID: "192.168.33.12"
+AFI_SAFI: "ipv4-flowspec"
+

@@ -1,0 +1,55 @@
+# {{ ansible_managed }} {{ ansible_date_time.date }}
+
+# See https://www.nginx.com/blog/rate-limiting-nginx/
+# limit_req_zone $binary_remote_addr zone=mylimit:64K rate=10r/s;
+
+server {
+	listen 80;
+	server_tokens        off;
+	server_name www.ddps.deic.dk;
+	root /opt/ddps_ui/web/www;
+	index index.php index.html;
+
+	# add Strict-Transport-Security to prevent man in the middle attacks
+	add_header Strict-Transport-Security "max-age=31536000" always;
+
+	# set limits low as we have no upload. Errors will be HTTP 413 
+	client_max_body_size 1m;
+
+	# required to avoid HTTP 411: see Issue #1486 (https://github.com/docker/docker/issues/1486)
+	chunked_transfer_encoding on;
+
+	if ($request_method !~ ^(GET|HEAD|POST)$ )
+	{
+			return 444;
+	}
+
+	location / {
+		try_files $uri $uri/ =404;
+	}
+
+	location ~ \.php$ {
+		include snippets/fastcgi-php.conf;
+		fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+		proxy_set_header X-Forwarded-Host $server_name;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+                add_header X-Frame-Options DENY;
+                add_header X-Content-Type-Options nosniff;
+                add_header X-Frame-Options "SAMEORIGIN";
+                add_header Referrer-Policy "strict-origin";
+		add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+		add_header X-XSS-Protection "1; mode=block";
+
+		add_header P3P 'CP="ALL DSP COR PSAa PSDa OUR NOR ONL UNI COM NAV"';
+	 }
+
+	location = /favicon.ico {
+		alias /opt/ddps_ui/web/images/favicon.ico;
+	}
+
+	location ~ /\.ht {
+		deny all;
+	}
+}

@@ -1,0 +1,15 @@
+# default_users are ignored
+# default_users: ['nobody', 'provision', 'ubuntu', 'vagrant']
+default_users: ['nobody'] 
+# required_users will be created once then ignored
+required_users: [ 'nice', 'uninth', 'sysadm', 'ansible' ]
+# Fix Linux/Ubuntu: error
+# Failed to set permissions on the temporary files Ansible needs to create when
+# becoming an unprivileged user (rc: 1, err: chown: changing ownership of
+# '/var/tmp/ansible-tmp-1607956882.2534459-30990-63747805357925/': Operation
+# not permitted
+pkgs:
+  - acl           # required for users as of https://github.com/georchestra/ansible/issues/55
+  - ksh
+  - bash
+

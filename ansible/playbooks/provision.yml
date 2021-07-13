@@ -1,0 +1,25 @@
+---
+- hosts: all
+  name: Provision all Ubuntu hosts
+  gather_facts: yes
+  roles:
+  - DDPS-common
+
+- hosts: ww1.ddps.deic.dk
+  name: Provision ww1.ddps.deic.dk
+  gather_facts: yes
+  roles:
+  - DDPS-ping
+  - DDPS-users
+  - DDPS-gobgp
+  - DDPS-postgresql
+  - DDPS-nginx
+  - DDPS-install_ddos_and_db2bgp_and_api 
+  - DDPS-f2b
+
+- hosts: fw1.ddps.deic.dk
+  name: Provision fw1.ddps.deic.dk
+  gather_facts: yes
+  roles:
+  - DDPS-users
+  - DDPS-gobgp

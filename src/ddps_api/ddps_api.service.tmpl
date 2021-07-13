@@ -1,0 +1,24 @@
+[Unit]
+Description=DDPS API
+Documentation=man:ddpsapid(1)
+Documentation=https://github.com/.../.../...
+After=network.target
+ConditionPathExists=/opt/db2bgp/etc/
+
+[Service]
+# ExecStart etc runs as _ddpsusr_:_ddpsgrp_
+Type=simple
+User=_ddpsusr_
+Group=_ddpsgrp_
+ExecStart=/opt/db2bgp/bin/ddpsapid 
+ExecStop=
+ExecReload=/usr/bin/touch _reload_
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=ddps_api
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+---
+#- name: Set lock
+#  include: "../../roles/prevent_simultaneous_deploys/tasks/pre_tasks.yml"
+- set_fact:
+    use_become_method: "doas"
+  when: ansible_os_family == "OpenBSD"
+- set_fact:
+    use_become_method: "sudo"
+  when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
+
+- name: "Common tasks for provisioning Ubuntu"
+  include: "{{ item_task }}"
+  with_items:
+    - add_pkgs.yml
+    - configure_gobgp.yml
+    - check_gobgp.yml
+  loop_control:
+    loop_var: item_task
+#- name: Release lock
+#  include: "../../prevent_simultaneous_deploys/tasks/post_tasks.yml"

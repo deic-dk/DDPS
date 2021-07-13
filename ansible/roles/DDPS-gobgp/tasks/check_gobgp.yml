@@ -1,0 +1,53 @@
+---
+# below fails due to quoting limitations and is shell not ansible
+#- name: Find BGP neighbor in config
+#  shell: sed '/neighbor-address/!d; s/.*=//; s/\"//g; s/\s*//g' /etc/gobgpd.conf
+#  register: my_neighbor
+
+# Here be dragons: slurp takes the remote file while lookup('file'.. allways
+# takes a local file.
+# slurp returns an ‘in memory’ base64 encoded version of the file, take into
+# account that this will require at least twice the RAM as the original file
+# size.
+
+- name: Read /etc/gobgpd.conf from {{ ansible_host }}
+  slurp:
+    src: /etc/gobgpd.conf
+  register: gobgpd_conf
+
+- name: Find neighbor-address in GoBGP config
+  set_fact:
+    neighbor_address: "{{ gobgpd_conf['content'] | b64decode |
+      regex_search('neighbor-address.*') |
+      regex_replace('.*\"([.0-9]*)\"', '\\1')
+    }}"
+      
+- name: Print neighbor-address
+  debug:
+    msg: "Neighbor address for {{ ansible_host }} is {{ neighbor_address }}"
+
+- name: Wait for BGP session reach state established. This will fail until GoBGP is installed on both hosts ...
+  command: "gobgp neighbor"
+  register: bgp_state
+  until: '"Establ" in bgp_state.stdout'
+  retries: 25
+  delay: 2
+  ignore_errors: True
+
+- debug:
+    msg: "{{ bgp_state.stdout }}"
+
+# pause:
+#   prompt: "It takes on average 20 seconds for eBGP to be established. Will sleep and resume ... "
+#   seconds: 20
+#
+# name: Check BGP connectivity
+# command: "gobgp neighbor"
+# register: output
+# failed_when: "'Establ' not in output.stdout"
+# ignore_errors: True
+#
+# pause:
+#   prompt: "Look for State 'Establ' see https://github.com/Exa-Networks/exabgp/wiki/BGP-state-machine"
+#   seconds: 4
+

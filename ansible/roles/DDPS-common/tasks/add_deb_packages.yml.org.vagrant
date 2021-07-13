@@ -1,0 +1,74 @@
+---
+# In production one would have a local repository and setup that then use apt
+# This requires certificates, so here we just uses the fact that /DDPS is mounted
+# on both hosts
+- name: "Add locally developed debian packages without PPA"
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: Check if dailybuandupdate is installed
+    command: dpkg-query -W dailybuandupdate
+    register: dailybuandupdate_check_deb
+    failed_when: dailybuandupdate_check_deb.rc > 1
+    changed_when: dailybuandupdate_check_deb.rc == 1
+
+  - name: Display paths of all .deb files in dir
+    debug: msg={{ lookup('fileglob', '/DDPS/ansible/roles/DDPS-common/files/pkgs/*.deb') }}
+    delegate_to: localhost
+
+  - name: Install dailybuandupdate
+    apt:
+      deb: "{{ item }}"
+    with_fileglob: '/DDPS/ansible/roles/DDPS-common/files/pkgs/*.deb'
+    when: dailybuandupdate_check_deb.rc == 1
+
+  - name: add minor changes to packages
+    copy:
+      src: "files/pkgs/{{ item }}"
+      dest: "/usr/local/bin/{{ item }}"
+      mode: 0555
+      owner: root
+      group: root
+    with_items:
+      - adhoc_update.sh
+      - autopgsqlbackup
+      - daily_backup.sh
+    when: dailybuandupdate_check_deb.rc == 1
+
+  - name: add config files
+    copy:
+      src: "files/pkgs/{{ item }}"
+      dest: "/usr/local/etc/{{ item }}"
+      mode: 0444
+      owner: root
+      group: root
+    with_items:
+      - daily_backup.cfg
+      - daily_backup.files
+    when: dailybuandupdate_check_deb.rc == 1
+
+  - name: change default cron entry for daily_backup
+    file:
+      path: "{{ item }}"
+      state: absent
+    with_items:
+      - /etc/cron.d/do_backup
+      - /etc/cron.d/daily_backup
+    when: dailybuandupdate_check_deb.rc == 1
+
+  - name: add new cron entry for daily_backup
+    blockinfile:
+      path: /etc/cron.d/do_backup
+      create: yes
+      marker: "# FILE MANAGD BY ANSIBLE"
+      block: |
+        59 23 * * * root [ -x /usr/local/bin/daily_backup.sh ] && /usr/local/bin/daily_backup.sh
+        0 8-21 * * * root [ -x /usr/local/bin/hourley_postgres_backup.sh ] && /usr/local/bin/hourley_postgres_backup.sh
+    when: dailybuandupdate_check_deb.rc == 1
+
+  - name: restart crond ...
+    service:
+      name: cron
+      state: restarted
+    when: dailybuandupdate_check_deb.rc == 1

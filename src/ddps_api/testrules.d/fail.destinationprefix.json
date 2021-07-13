@@ -1,0 +1,16 @@
+{
+  "durationminutes" : "10",
+  "destinationport": "xx Her er ikke så mange tegn",
+  "sourceport": "xx Her er ikke så mange tegn",
+  "icmptype": "xx Her er ikke så mange tegn",
+  "icmpcode": "xx Her er ikke så mange tegn",
+  "packetlength": "xx Her er ikke så mange tegn",
+  "dscp": "xx Her er ikke så mange tegn",
+  "description": "xx Her er ikke så mange tegn",
+  "destinationprefix": "xx Her er 130 tegn xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "sourceprefix": "8.8.8.8/32",
+  "thenaction": "xx Her er ikke så mange tegn",
+  "fragmentencoding": "xx Her er ikke så mange tegn",
+  "ipprotocol": "xx Her er ikke så mange tegn",
+  "tcpflags": "xx Her er ikke så mange tegn"
+}

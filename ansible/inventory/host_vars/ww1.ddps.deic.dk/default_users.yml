@@ -1,0 +1,5 @@
+# default_users are ignored, primaraly for testing/vagrant:
+#   - password unchanged
+#   - not deleted
+default_users: ['nobody', 'provision', 'ubuntu', 'vagrant', 'ddpsusr']
+

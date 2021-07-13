@@ -1,0 +1,321 @@
+#! /bin/bash
+#
+# This is an ugly hack but it works most of the time
+#
+
+function withdraw_all()
+{
+	logit "withdrawing all announcements from database ... "
+			
+	export validto=$( echo "SELECT now() "|PGPASSWORD="${dbpassword}" psql -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname} )
+
+	echo "${q_select_active_rules}"|
+		PGPASSWORD="${dbpassword}" psql -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname}|
+		while read FLOWSPECRULEID
+	do
+		logit "processing $FLOWSPECRULEID ... "
+		q_update_rule_activation_and_notification="
+		UPDATE ddps.flowspecrules
+		SET
+			validto = '${validto}',
+			isactivated = 'FALSE',
+			isexpired = 'TRUE',
+			notification = '${status}'
+		WHERE
+			flowspecruleid in ( '${FLOWSPECRULEID}' );
+		"
+		echo ${q_update_rule_activation_and_notification} |PGPASSWORD="${dbpassword}" psql -q -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname}
+	done
+}
+
+function remove_announcements()
+{
+	for gobgphost in ${hostlist}
+	do
+		logit "restarting gobgpd on ${gobgphost} .... "
+		echo "ssh ${username}@${gobgphost} sudo service gobgpd restart" | sudo su - ${username}
+	done
+}
+
+function get_gobgpd_info()
+{
+	# Return 1 if running, 0 if not
+	local is_gobgpd_running="/bin/ps --noheader -o lstart -C gobgpd | wc -l|tr -d ' '"
+	# Return number of announcements in gobgpd
+	local announcing_rules="gobgp global rib -a ipv4-flowspec| awk '{c+=gsub(/fictitious/,\"&\")}END{print c}'"
+	# Return GBP state, see https://en.wikipedia.org/wiki/Border_Gateway_Protocol section Extensions negotiation and
+	# how long the current state has last
+	NB=$( sed '/^#/d; /neighbor-address/!d; s/.*=//; s/"//g; s/[[:space:]]*//' /etc/gobgpd.conf)
+	local gobgpd_state_machine="gobgp neighbor $NB|sed '/BGP state/!d; s/^.*= //'"
+
+
+	for gobgphost in ${hostlist}
+	do
+		is_running=$( echo "ssh ${username}@${gobgphost} ${is_gobgpd_running}" | sudo su - ${username} )
+		gobgpd_status_array[${gobgphost}]=${is_running}
+		case "${is_running}" in
+			""|0)	gobgpd_status_array[${gobgphost}]="down"
+				;;
+			*)	gobgpd_status_array[${gobgphost}]="ok"
+				;;
+		esac
+		gobgpd_announcement_array[${gobgphost}]=$( echo "ssh ${username}@${gobgphost} ${announcing_rules}" | sudo su - ${username})
+		gobgpd_state_machine_array[${gobgphost}]=$( echo "ssh ${username}@${gobgphost} ${gobgpd_state_machine}" | sudo su - ${username})
+	done
+}
+
+function print_status()
+{
+	local number_of_active_rules=$( echo "${q_select_active_rules}"|
+		PGPASSWORD="${dbpassword}" psql -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname}|wc -l | tr -d ' ' )
+
+	printf "%10s\t%-10s\t%-10s\t%-8s\t%s\n" "Hostname" "GoBGP" "Announcements" "Rules in DB" "BGP Status"
+	printf '%85s\n' | tr ' ' -
+	for gobgphost in ${hostlist}
+	do
+		printf "%10s\t%-10s\t%-10s\t%-8s\t%-15s\n" "$gobgphost" "${gobgpd_status_array[${gobgphost}]}" "${gobgpd_announcement_array[${gobgphost}]}" "${number_of_active_rules}" "${gobgpd_state_machine_array[${gobgphost}]}"
+	done
+
+	case "${gobgpd_state_machine_array[${gobgphost}],,}" in		# ,, lower case on var
+		established*)	:
+			;;
+		*)	printf "BGP state is failed, expected established\n"
+			printf "see https://en.wikipedia.org/wiki/Border_Gateway_Protocol section Extensions negotiation"
+			;;
+	esac
+
+	# Assumes running on localhost
+	printf "\n%10s\t%-10s\n" "Service" "Status"
+	printf '%22s\n' | tr ' ' -
+	for system in gobgpd db2bgp nginx postgresql
+	do
+		printf "%10s\t%-10s\n" ${system} $( systemctl is-active ${system} )
+	done
+	cat <<-EOF
+
+	See detailed BGP status with
+	    gobgp neighbor
+	And announcements with
+	    gobgp global rib -a ipv4-flowspec
+
+EOF
+}
+
+function logit() {
+	local LOGIT_NOW=$( date '+%H:%M:%S (%d/%m)')
+	local STRING="$*"
+
+	if [ -n "${STRING}" ]; then
+		$log2syslog "${STRING}"
+		if [ "${VERBOSE}" = "TRUE" ]; then
+			$echo "${LOGIT_NOW} ${STRING}"
+		fi
+	else
+		while read LINE
+		do
+			if [ -n "${LINE}" ]; then
+				$log2syslog "${line}"
+				if [ "${VERBOSE}" = "TRUE" ]; then
+					$echo "${LOGIT_NOW} ${LINE}"
+				fi
+			fi
+		done
+	fi
+}
+
+function retry_announcements()
+# Some times db2bgp comes up before bgp and fails to announce the rule(s) correctly
+# Until I've fixed that bug, this is needed
+{
+	SQL='
+		UPDATE ddps.flowspecrules
+		SET
+	      	 	isactivated = false,
+			isexpired = false
+		WHERE
+			isexpired = true AND
+			isactivated = false AND
+			validto >= now();
+
+	'
+	echo "${SQL}" |
+	PGPASSWORD="${dbpassword}" psql -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname}
+}
+
+function usage() {
+echo $*
+cat << EOF
+Usage:
+    $( basename $0) panic | retry | status 
+
+If announcement(s) has failed due to a now fixed BGP daemon error:
+    $( basename $0) retry
+
+Report status for the system
+    $( basename $0) status
+
+Remove all active rules and announcements
+    $( basename $0) panic
+
+EOF
+	exit 2
+}
+
+clean_f () {
+	$echo trapped
+	/bin/rm -f $TMPFILE $MAILFILE
+}
+
+function main()
+{
+	MYNAME=$( basename $0 )
+	MY_LOGFILE=/var/log/${MYNAME}.log
+	VERBOSE=FALSE
+	log2syslog="logger -t world -p mail.crit "
+
+	# run as this user
+	username=ddpsusr
+
+	ini=/opt/db2bgp/etc/ddps.ini
+	shutdown=$(		sed '/^shutdown.*=,*/!d; s/.*=//; s/[[:space:]]//g' ${ini} )
+	reload=$(		sed '/^reload.*=,*/!d; s/.*=//; s/[[:space:]]//g' ${ini}   )
+	lock=$(			sed '/^lock.*=,*/!d; s/.*=//; s/[[:space:]]//g' ${ini}     )
+	hostlist=$(		sed '/^hostlist.*=/!d; s/.*=//; s/^[[:blank:]]*//g' ${ini} )
+	gobgp=$(	sed '/^gobgp.*=/!d; s/.*=//; s/^[[:blank:]]*//g' ${ini} )
+	dbname=$(		sed '/^dbname.*=/!d; s/.*=//; s/^[[:blank:]]*//g' ${ini} )
+	dbuser=$(		sed '/^dbuser.*=/!d; s/.*=//; s/^[[:blank:]]*//g' ${ini} )
+	dbpassword=$(	sed '/^dbpassword.*=/!d; s/.*=//; s/^[[:blank:]]*//g' ${ini} )
+
+	q_select_active_rules="SELECT distinct flowspecruleid FROM ddps.flowspecrules WHERE not isexpired ;"
+
+	# deleted active expired program_error
+	status=$( echo "SELECT rule_status_value FROM ddps.rule_status WHERe rule_status_var in ('deleted'); "|PGPASSWORD="${dbpassword}" psql -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname} )
+
+	declare -A gobgpd_status_array
+	declare -A gobgpd_announcement_array
+	declare -A gobgpd_state_machine_array
+
+	# check on how to suppress newline (found in an Oracle installation script ca 1992)
+	echo="/bin/echo"
+	case ${N}$C in
+		"") if $echo "\c" | grep c >/dev/null 2>&1; then
+			N='-n'
+		else
+			C='\c'
+		fi ;;
+	esac
+	#
+	# Process arguments
+	#
+	while getopts vh opt
+	do
+	case $opt in
+		v)	VERBOSE=TRUE
+		;;
+		h)	usage
+		;;
+		*)	usage
+		;;
+	esac
+	done
+	shift $( expr $OPTIND - 1)
+	logit "Starting $0 $*"
+
+	if [ ! -f ${ini} ]; then
+		echo "file ${ini} not found, bye"; exit 1
+	fi
+	logit "read vars from ${ini} ... "
+	if [ -z "${shutdown}" ]; then 
+		echo "shutdown not found in ${ini}"; exit 1
+	fi
+	if [ -z "${reload}" ]; then 
+		echo "reload not found in ${ini}"; exit 1
+	fi
+	if [ -z "${lock}" ]; then 
+		echo "lock not found in ${ini}"; exit 1
+	fi
+	if [ -z "${hostlist}" ]; then 
+		echo "hostlist not found in ${ini}"; exit 1
+	fi
+	if [ -z "${gobgp}" ]; then 
+		echo "gobgp not found in ${ini}"; exit 1
+	fi
+	if [ -z "${dbname}" ]; then 
+		echo "dbname not found in ${ini}"; exit 1
+	fi
+	if [ -z "${dbname}" ]; then
+		echo "dbname not found in ${ini}"; exit 1
+	fi
+	if [ -z "${dbuser}" ]; then
+		echo "dbname not found in ${ini}"; exit 1
+	fi
+	if [ -z "${dbpassword}" ]; then
+		echo "dbname not found in ${ini}"; exit 1
+	fi
+	case $1 in
+		"")	usage "missing args"
+			;;
+		status)
+			get_gobgpd_info
+			print_status
+			;;
+		panic)
+			withdraw_all
+			remove_announcements
+			echo it will on average take 17 seconds to bring up the BGP session
+			get_gobgpd_info
+			print_status
+			;;
+		retry)
+			retry_announcements
+			;;
+		*)	usage "unknown arg: $1"
+			;;
+	esac
+
+	exit 0
+
+}
+
+################################################################################
+# Main
+################################################################################
+#
+# clean up on trap(s)
+#
+trap clean_f 1 2 3 13 15
+
+main $*
+
+
+# Modified BSD License
+# ====================
+# 
+# Copyright © 2019, Niels Thomas Haugård
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright
+#	 notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#	 notice, this list of conditions and the following disclaimer in the
+#	 documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the  haugaard.net inc nor the
+#	 names of its contributors may be used to endorse or promote products
+#	 derived from this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL Niels Thomas Haugård BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+

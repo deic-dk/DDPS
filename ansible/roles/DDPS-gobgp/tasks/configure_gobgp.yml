@@ -1,0 +1,55 @@
+---
+- name: "Configuring GoBGP ... "
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: "Stopping gobgpd as validation of gobgpd config starts the daemon"
+    systemd:
+      enabled: yes
+      name: gobgpd
+      state: stopped
+
+  - name: "check if gobgpd.conf exists"
+    stat:
+      path: /etc/gobgpd.conf
+    register: gobgpd_conf
+
+  - name: "preserve existing gobgpd.conf"
+    copy:
+      src: /etc/gobgpd.conf
+      dest: /tmp/gobgpd.conf.{{ ansible_date_time.epoch }}.bak
+      mode: preserve
+      remote_src: yes
+
+    when: gobgpd_conf.stat.exists == true
+    
+  - name: generate new gogbgpd.conf at /etc/gobgpd
+    template:
+      src: templates/gobgpd.conf.j2
+      dest: /etc/gobgpd.conf
+      backup: yes
+      validate: "gobgpd -f %s -d"
+
+  rescue:
+    - debug:
+       msg: 'validating new config failed'
+    - name: preserve failed gobgpd.conf as /tmp/gobgpd.conf.{{ ansible_date_time.epoch }}.fail
+      copy:
+        src: /etc/gobgpd.conf
+        dest: /tmp/gobgpd.conf.{{ ansible_date_time.epoch }}.fail
+        mode: preserve
+        remote_src: yes
+    - name: restoring previous gobgp.conf ...
+      copy:
+        src: /tmp/gobgpd.conf.{{ ansible_date_time.epoch }}.bak
+        dest: /etc/gobgpd.conf
+        mode: preserve
+        remote_src: yes
+
+  always:
+  - name: register sytemd and start daemon
+    systemd:
+      enabled: yes
+      name: gobgpd
+      state: restarted

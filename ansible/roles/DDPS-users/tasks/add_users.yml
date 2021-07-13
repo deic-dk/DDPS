@@ -1,0 +1,27 @@
+# Need testing on latest OpenBSD
+---  
+- include_vars: "{{ inventory_dir }}/group_vars/all/users.yml"
+- name: Allways determine available groups
+  getent:
+    database: group
+
+- name: Allways determine available users
+  getent:
+    database: passwd
+
+- name: Add users on Linux and OpenBSD
+  become: true
+  become_user: "root"
+  become_method: "{{ use_become_method }}"
+  block:
+  - name: "Create users with home directory"
+    user:
+      name: "{{ item.name }}"
+      shell: "{{ item.shell }}"
+      password: "{{item.password}}"
+      createhome: yes
+      comment: "{{ item.comment}}"
+      state: present
+    with_items: "{{users}}"
+    when:
+      - "item.name|string not in ansible_facts.getent_group"

@@ -1,0 +1,5 @@
+
+Made with
+
+su --login --command "pg_dumpall --clean --if-exists "  postgres|gzip -v9 > dumpall-with-oids.gz
+

@@ -1,0 +1,34 @@
+{
+  "name": "fusioncharts",
+  "main": "fusioncharts.js",
+  "bugs": {
+    "url": "http://www.fusioncharts.com/contact-support/"
+  },
+  "description": "FusionCharts JavaScript charting framework",
+  "license": "http://www.fusioncharts.com/buy/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fusioncharts/fusioncharts-dist.git"
+  },
+  "author": "FusionCharts Technologies  <support@fusioncharts.com>",
+  "version": "3.14.0-sr.1",
+  "homepage": "http://www.fusioncharts.com/",
+  "keywords": [
+    "fusioncharts",
+    "charts",
+    "dataviz",
+    "graphs",
+    "visualization",
+    "js-charts",
+    "javascript-charts",
+    "dashboards",
+    "data-stories",
+    "bar-charts",
+    "pie-charts",
+    "line-charts",
+    "area-charts",
+    "column-charts",
+    "gantt-chart"
+  ],
+  "dependencies": {}
+}

@@ -1,0 +1,16 @@
+{
+  "durationminutes": "10",
+  "destinationport": "=80",
+  "sourceport": "",
+  "icmptype": "",
+  "icmpcode": "",
+  "packetlength": "900",
+  "dscp": "",
+  "description": "Block wired packets length 900 to our web server",
+  "destinationprefix": "10.0.0.0/32",
+  "sourceprefix": "0.0.0.0/0",
+  "thenaction": "discard",
+  "fragmentencoding": "",
+  "ipprotocol": "=6",
+  "tcpflags": ""
+}
