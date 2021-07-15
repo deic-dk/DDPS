@@ -190,7 +190,7 @@ We intend to
 
 If you would like help implementing DDPS then please have a look at the [contributing](docs/contributing.md) page. If you would like to contact the team behind DDPS then send an email to [ddps-info@deic.dk](mailto:ddps-info@deic.dk)
 
-The code is made primarily by Mehran Khan and Niels Thomas Haugård, with the contribution of other from DEiC and i2.
+The code is made primarily by Mehran Khan and Niels Thomas Haugård, with the contribution of others from DeiC and i2.
 
 ## License
 
