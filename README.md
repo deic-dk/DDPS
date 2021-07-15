@@ -159,13 +159,13 @@ ad83ef21-364f-4454-904d-de84fa423aa9   2119-11-23 12:54:48.257045+01    Active  
 read 16 rules
 `````
 
-The GUI is intended for customer access, the command line is intended for use internally by the ISP network operators on an ad-hoc basis. More information on rule creation is available here: [command line rules help](docs/cli-rules-help.md) and [GUI rules help](docs/gui-rules-help.md).
+The GUI is intended for customer access, the command line is intended for internal use by the ISP network operators on an ad-hoc basis. More information on rule creation is available here: [command line rules help](docs/cli-rules-help.md) and [GUI rules help](docs/gui-rules-help.md).
 
 If the system (re-)starts in such a way, that the background process begins before the BGP service is ready, existing rules may fail to be implemented, and the _rule state_ will show _Failed to implement rule_. This situation may be fixed with the command `sudo /opt/db2bgp/bin/reactivate_not_expired_rules.sh`.
 
 ## Main difference between test and production environment
 
-In the production environment the web-server is behind an VPN service and there are several GoBGP servers and a set of routers for enforcement. Nothing of this is needed to see how the system works. Juniper has en excellent guide on flowspec configuration in [BGP_FLowspec](https://www.juniper.net/documentation/en_US/day-one-books/DO_BGP_FLowspec.pdf) from their Juniper day 1 series. Other vendors may have similar documentation.
+In the production environment the web-server is behind a VPN service and there are several GoBGP servers and a set of routers for enforcement. Nothing of this is needed to see how the system works. Juniper has an excellent guide on Flowspec configuration in [BGP_FLowspec](https://www.juniper.net/documentation/en_US/day-one-books/DO_BGP_FLowspec.pdf) from their Juniper day 1 series. Other vendors may have similar documentation.
 
 Notice, **the system is not intended to be directly accessible from the Internet**.
 
@@ -179,7 +179,7 @@ SSH trust must be enabled for the user `ddpsusr` from where the database and web
 
 ## Roadmap
 
-We intend to make
+We intend to 
 
   - Extend the _API_ and build a command with the same functionality as the current CLI but without its limitations. 
   - Add more _Templates_ for protecting specific services
