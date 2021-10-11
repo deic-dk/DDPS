@@ -1,4 +1,7 @@
  $(document).ready(function() {
+ $('#startdate').datetimepicker();
+ $('#enddate').datetimepicker();
+
     $("#byaction").hide();
     $("#date").hide();
 
@@ -22,13 +25,4 @@
             ('#thenaction').val("");
         }
     });
-
-    $( function() {
-        $("#startdate").datepicker({dateFormat: 'yy-mm-dd'});
-    });
-
-    $( function() {
-        $("#enddate").datepicker({dateFormat: 'yy-mm-dd'});
-    });
-
 });

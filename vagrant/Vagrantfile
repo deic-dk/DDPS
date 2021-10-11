@@ -4,37 +4,46 @@
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-	# disable VirtualBox Guest Additions as they fail to build during vagrant up
-	config.vbguest.auto_update = true
+    # disable/enable VirtualBox Guest Additions as they fail to build during vagrant up
+    config.vbguest.auto_update = true
 
 	config.vm.define "fw1" do |fw1|
       # fw1.vm.box = "ubuntu/bionic64"  # 18.04 works with synced folders
-      fw1.vm.box = "ubuntu/focal64"     # 20.04 does too
+      fw1.vm.box = "ubuntu/focal64"     # 20.04 does too, some times ...
 		fw1.vm.hostname = "fw1.ddps.deic.dk"
-
         fw1.vm.synced_folder ".", "/vagrant", disabled: true
-		# fw1.vm.synced_folder "..", "/DDPS"
 		fw1.vm.network "private_network", ip: "192.168.33.2"
 		fw1.vm.provider :virtualbox do |vb|
 			vb.name = "fw1"
 			vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"]
+            # See https://bugs.launchpad.net/cloud-images/+bug/1829625 doesn't work, though
+            # vb.customize ["modifyvm", :id, "--uart1", "0x3F8", "4"]
+            # vb.customize ["modifyvm", :id, "--uartmode1", "file", File::NULL]
 		end
 		fw1.vm.provision :shell, path: "provision.sh"
 	end
 	config.vm.define "ww1" do |ww1|
+        # ww1.vm.box = "ubuntu/bionic64"
 		ww1.vm.box = "ubuntu/focal64"
 		ww1.vm.hostname = "ww1.ddps.deic.dk"
-
 		ww1.vm.network :forwarded_port, guest: 80, host: 8080, id: 'http'
 		ww1.vm.network :forwarded_port, guest: 443, host: 8443, id: 'https'
 		ww1.vm.network :forwarded_port, guest: 5432, host: 5432, id: 'postgres'
 
-		ww1.vm.synced_folder "..", "/DDPS"
-        ww1.vm.synced_folder "../ansible", "/ansible"
+        # vagrant ssh ww1 -- -v
+        # ww1.ssh.password = "vagrant"
+
+        ww1.vm.synced_folder ".", "/vagrant", disabled: true
+		ww1.vm.synced_folder "..", "/DDPS", type: "rsync", rsync__exclude: ['not-on-git']
+        ww1.vm.synced_folder "../ansible", "/ansible", type: "rsync", rsync__exclude: ['not-on-git']
         ww1.vm.network "private_network", ip: "192.168.33.12"
+        # ww1.vm.ssh.port = 2200
 		ww1.vm.provider :virtualbox do |vb|
 			vb.name = "ww1"
 			vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"]
+            # vb.customize ["modifyvm", :id, "--uart1", "0x3F8", "4"]
+            # vb.customize ["modifyvm", :id, "--uartmode1", "file", File::NULL]
+          # ww1.ssh_info_public = true
 		end
 		ww1.vm.provision :shell, path: "provision.sh"
 	end

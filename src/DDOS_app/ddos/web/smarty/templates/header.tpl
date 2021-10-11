@@ -3,17 +3,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>DeiC DDPS</title>
             <link href="/css/style.css" type="text/css" rel="stylesheet" />
-
-           <!--  <script src="https://code.jquery.com/jquery-3.3.1.js" type="text/javascript"></script>-->
-            <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-           <script src="../js/fusioncharts-dist/fusioncharts.js"></script>
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+            <script src="../js/fusioncharts-dist/fusioncharts.js"></script>
             <script src="../js/fusioncharts-dist/fusioncharts.charts.js"></script>
             <script src="../js/fusioncharts-dist/themes/fusioncharts.theme.zune.js"></script>
-          <!--  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>-->
             <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
 
-            <!--<script src="https://code.jquery.com/jquery-2.1.1.min.js" type="text/javascript"></script>-->
-            <script src="../js/jquery.datetimepicker.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.js"></script>
+
             <script src="../js/rules.js" type="text/javascript"></script>
             <script src="../js/user.js" type="text/javascript"></script>
             <script src="../js/addnetwork.js" type="text/javascript"></script>
@@ -23,15 +20,12 @@
             <script src="../js/alert.js" type="text/javascript"></script>
 
             <script src="../js/jquery.dataTables.min.js" type="text/javascript"></script>
-            <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-
-            <link rel="stylesheet" href="/css/jquery.dataTables.min.css">
-            <link rel="stylesheet" href="/css/alert.css">
 
             <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 
-
             <link rel="stylesheet" type="text/css" href="/css/jquery.datetimepicker.min.css"/>
+            <link rel="stylesheet" href="/css/jquery.dataTables.min.css">
+            <link rel="stylesheet" href="/css/alert.css">
 
      </head>
 <body>

@@ -43,8 +43,9 @@ If the value of `ipprotocol` is `<=5&>=7`, then the field will match all other p
 | tcpflags          | Flags     | Valid TCP flags, see note                    | 128 chars             |
 
 Notes:
-  - `packetlength`: Minimum header size is 20, 1 required for data, maximum is 65535. In practice all small packages are padded to 64 bit and large packages split in segments.
-  - `thenaction`:  One of `accept`, `discard`, `rate-limit 9600`, `rate-limit 19200` or `rate-limit 38400`
+
+  - `packetlength`: The IPv4 minimum header size is 20 bytes (header without data), maximum is 65535 bytes. As the minimum ethernet frame size is 64 bytes all packages are padded to that size. The reason this was originally done with Ethernet was to ensure a minimum frame length on the wire so that collisions could be reliably detected by all devices even with shared cables, see [ethernet frames](https://en.wikipedia.org/wiki/Ethernet_frame) and [stackexchange](https://networkengineering.stackexchange.com/questions/34189/minimum-ethernet-frame-is-64-bytes-why-the-payload-must-be-padded-to-at-least-4/34191).
+  - `thenaction`:  One of '`accept`', '`discard`', '`rate-limit 9600`', '`rate-limit 19200`' or '`rate-limit 38400`' (without the quotes)
   - `fragmentencoding`: One or more of `is-fragment`, `dont-fragment`, `first-fragment`, `last-fragment` and `not-a-fragment`
   - `tcpflags`: One or more of `fin`, `syn`, `rst`, `push`, `ack` and `urgent`
 

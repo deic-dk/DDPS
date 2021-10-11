@@ -49,6 +49,10 @@ if (isset($_POST['username']) && isset($_POST['pass']) && !isset($_SESSION['role
     }
 }
 
+if (isset($_SESSION['customerid'])) {
+    $countNetworks = count($objNetwork->allbasicnetworks($_SESSION['customerid'], $_SESSION['role'], $_SESSION['adminid'])); // Keep Track of networks assigned to NetAdmin
+}
+
 if (!isset($_SESSION['role'])) {
     $smarty->display('dashboard_login.tpl');
 } else {

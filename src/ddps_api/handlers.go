@@ -1,42 +1,19 @@
 package main
 
-/*
-* ERROR: program error(s)
-* SUCCESS: ignore
-* WARNING: alarm to be catched by fail2ban
- */
-
-/*
-	TODO / STATUS:
-
-	 - [x] jwt token ok
-	 - [x] sets uuid in jwt correctly / returns administrator and customer id
-	 - [x] routers ready sending errors/warnings to syslog for fail2ban
-	 - [x] addrule prints all parameters correctly
-	 - [-] addrule verification of field type tested
-	 - [x] parse / read ini file for db2bgp
-	 - [x] connects to postgresql
-	 - [x] login reads from postgresql
-	 - [x] login handles errors from postgresql correctly
-	 - [x] addrule writes to postgresql
-	 - [x] addrule handles errors from postgresql correctly
-	 - [ ] Write / fix some thing about the API and return values / strings:
-		- If the json is not valid [json validator](https://jsonlint.com) then the reply string is not accurate
-	 - [x] systemd start/stop
-	 - [x] make install sort-of
-	 - [ ] version 1.0-1 done
-*/
-
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	_ "github.com/lib/pq"
-	"gopkg.in/go-playground/validator.v9"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
+
+	"log"
+
+	"github.com/golang-jwt/jwt"
+	_ "github.com/lib/pq"
+	"gopkg.in/go-playground/validator.v9"
+
 	//	"os"
 	"strconv"
 	"strings"
@@ -203,6 +180,10 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 		Name:    "token",
 		Value:   tokenString,
 		Expires: expirationTime,
+
+		HttpOnly: true, // disallow access by remote javascript code
+		SameSite: 3,    // (None, Lax, or Strict) restrict cookie return (None requires Secure)
+		// Secure:   true,	// cookie is only sent through HTTPS connections, disabled as it will break vagrant
 	})
 }
 

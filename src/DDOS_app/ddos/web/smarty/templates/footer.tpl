@@ -16,7 +16,7 @@
       </svg>
   	</span>
 						<!--img src="/images/deic.svg" width="74" height="30" alt="DeiC" /--> </td>
-					<td class="content footer" > Contact and Contributing: If you would like to help implementing DDPS then please have a look at the <a href = "">contribution page</a>. If you would like to contact the team behind DDPS then send an email to <a href="mailto:support@ddps.dk">ddps-info@deic.dk</a></td>
+					<td class="content footer" > Contact and Contributing: If you would like to help implementing DDPS then please have a look at the <a href = "https://github.com/deic-dk/DDPS/blob/master/docs/contributing.md">contribution page</a>. If you would like to contact the team behind DDPS then send an email to <a href="mailto:support@ddps.dk">ddps-info@deic.dk</a></td>
 				</tr>
 			</table>
 		</div>

@@ -64,7 +64,7 @@
             dt = d.getFullYear()  + "-" + (d.getMonth()+1) + "-" + d.getDate() + " " +d.getHours() + ":" + time;
         }
         $("#expdate").datetimepicker({}).val(dt);
-        $("#expdate1").datetimepicker({})
+        $("#expdate1").datetimepicker({});
     });
 
     $(function(){
@@ -72,6 +72,7 @@
         var dt = d.getFullYear()  + "-" + (d.getMonth()+1) + "-" + d.getDate() + " " +d.getHours() + ":" + d.getMinutes();
         $('#fromdate').datetimepicker({}).val(dt);
     });
+
 
     $("#srcopt").change(function () {
        var value = $("#srcopt").val();

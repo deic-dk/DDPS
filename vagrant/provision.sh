@@ -132,7 +132,7 @@ EOF
 
 	# create ansible.pub based on the pub key in the script + your public key(s)
 	# this has to be done as the users.yml playbook will use it
-	cat /home/ansible/.ssh/authorized_keys > /ansible/group_vars/all/keys/ansible.pub
+	cat /home/ansible/.ssh/authorized_keys > /ansible/inventory/group_vars/all/admin_keys/ansible.pub
 
 	echo '. /opt/ansible_venv/bin/activate; cd /ansible; ansible-playbook  -i inventory /ansible/playbooks/ping.yml'|su -l ansible
 	echo '. /opt/ansible_venv/bin/activate; cd /ansible; ansible-playbook  -i inventory /ansible/playbooks/provision.yml -e env=vagrant'|su -l ansible

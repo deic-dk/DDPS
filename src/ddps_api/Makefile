@@ -54,7 +54,11 @@ start:
 	sleep 4
 	echo $(target) started
 
-$(target): $(gofiles)
+go.mod:
+	go mod init main
+	go mod tidy
+
+$(target): $(gofiles) go.mod
 	# automatic
 	# env GOOS=$(shell uname|tr 'A-Z' 'a-z' ) GOARCH=amd64 go build -o $(target) $(gofiles) && echo compiled $(target)
 	# fixed darwin|linux

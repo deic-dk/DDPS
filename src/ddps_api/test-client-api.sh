@@ -24,9 +24,9 @@ case $FOUNDIP in
 192.168.33.12	www.ddps.deic.dk
 EOF
 		) > /tmp/hosts
-		mv /tmp/hosts /etc/hosts
-		chmod 0644 /etc/hosts
-		chown root:root /etc/hosts
+		sudo mv /tmp/hosts /etc/hosts
+		sudo chmod 0644 /etc/hosts
+		sudo chown root:root /etc/hosts
 		;;
 	*)	:
 		;;

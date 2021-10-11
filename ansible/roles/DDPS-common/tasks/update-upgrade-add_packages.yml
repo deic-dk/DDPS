@@ -1,4 +1,8 @@
 ---
+- set_fact:
+    is_vagrant: "{% if env == 'prod' %} 'no' {% else %} 'yes' {% endif %}"
+# Vhen running on vagrant do not reboot in the middle of the play ...
+
 - name: "Install patches and updates on Ubuntu"
   become: true
   become_user: "root"
@@ -13,7 +17,7 @@
       autoclean: yes
     when: ansible_os_family == 'Debian' or ansible_os_family == 'Ubuntu'
   
-  - name: Reboot box if kernel/libs updated and requested by the system
+  - name: Reboot box if kernel/libs updated and requested by the system - and not in a vagrant environment
     shell: "[ -f /var/run/reboot-required ]"
     failed_when: False
     register: reboot_required
@@ -24,7 +28,7 @@
     become: true
     async: 309
     poll: 0
-    when: reboot_required.rc == 0
+    when: 'reboot_required.rc == 0 and is_vagrant|string == "no"'
 
   - name: Wait for system to become reachable again
     wait_for_connection:

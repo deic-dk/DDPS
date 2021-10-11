@@ -1,7 +1,7 @@
 
 # DeiC Distributed Denial of Service Attack Prevention System, DDPS
 
-DDPS is a customer self service system for mitigating DDOS attacks build for the Danish research network, DeIC. An administrator may create rules for the organisations own network(s) which then are announced using BGP flowspec. 
+DDPS is a customer self service system for mitigating DDoS attacks build for the Danish research network, DeIC. An administrator may create rules for the organisations own network(s) which then are announced using BGP flowspec. 
 
 The current version of DDPS consists of
 
@@ -83,6 +83,8 @@ The values for `max_active_rules` and `max_rule_fluctuation_time_window` have be
 
 These figures may be change only by the global administrator from Customers->Customer.
 
+Notice that all vendors have limitations on the total amount of flowspec rules; [Cisco ASR 9000 has a maximum of 3000 rules](https://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/asr9k_r5-2/routing/configuration/guide/b_routing_cg52xasr9k/b_routing_cg52xasr9k_chapter_011.html), while the [max-flow default 8000 may be changed on Junos](https://www.juniper.net/documentation/en_US/junos/topics/reference/configuration-statement/max-flows-edit-services.html).
+
 ### GUI
 
 The GUI is running on `http://localhost:8080` / `http://192.168.33.10`  in the test environment. Planned downtime is displayed on the home page (system status - use the pencil icon to edit planned system maintenance)
@@ -159,13 +161,13 @@ ad83ef21-364f-4454-904d-de84fa423aa9   2119-11-23 12:54:48.257045+01    Active  
 read 16 rules
 `````
 
-The GUI is intended for customer access, the command line is intended for internal use by the ISP network operators on an ad-hoc basis. More information on rule creation is available here: [command line rules help](docs/cli-rules-help.md) and [GUI rules help](docs/gui-rules-help.md).
+The GUI is intended for customer access, the command line is intended for use internally by the ISP network operators on an ad-hoc basis. More information on rule creation is available here: [command line rules help](docs/cli-rules-help.md) and [GUI rules help](docs/gui-rules-help.md).
 
 If the system (re-)starts in such a way, that the background process begins before the BGP service is ready, existing rules may fail to be implemented, and the _rule state_ will show _Failed to implement rule_. This situation may be fixed with the command `sudo /opt/db2bgp/bin/reactivate_not_expired_rules.sh`.
 
 ## Main difference between test and production environment
 
-In the production environment the web-server is behind a VPN service and there are several GoBGP servers and a set of routers for enforcement. Nothing of this is needed to see how the system works. Juniper has an excellent guide on Flowspec configuration in [BGP_FLowspec](https://www.juniper.net/documentation/en_US/day-one-books/DO_BGP_FLowspec.pdf) from their Juniper day 1 series. Other vendors may have similar documentation.
+In the production environment the web-server is behind an VPN service and there are several GoBGP servers and a set of routers for enforcement. Nothing of this is needed to see how the system works. Juniper has en excellent guide on flowspec configuration in [BGP_FLowspec](https://www.juniper.net/documentation/en_US/day-one-books/DO_BGP_FLowspec.pdf) from their Juniper day 1 series. Other vendors may have similar documentation.
 
 Notice, **the system is not intended to be directly accessible from the Internet**.
 
@@ -179,7 +181,7 @@ SSH trust must be enabled for the user `ddpsusr` from where the database and web
 
 ## Roadmap
 
-We intend to 
+We intend to make
 
   - Extend the _API_ and build a command with the same functionality as the current CLI but without its limitations. 
   - Add more _Templates_ for protecting specific services
@@ -190,7 +192,7 @@ We intend to
 
 If you would like help implementing DDPS then please have a look at the [contributing](docs/contributing.md) page. If you would like to contact the team behind DDPS then send an email to [ddps-info@deic.dk](mailto:ddps-info@deic.dk)
 
-The code is made primarily by Mehran Khan and Niels Thomas Haugård, with the contribution of others from DeiC and i2.
+The code is made primarily by Mehran Khan and Niels Thomas Haugård, with the contribution of other from DEiC and i2.
 
 ## License
 
