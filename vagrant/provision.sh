@@ -47,8 +47,9 @@ id_ddps_key_ed25519_pub="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIItuM2b2LBwSifHvKXN
 			test -d /root/.ssh/ || mkdir /root/.ssh/
 			find /root -type d -print0 | xargs -0 chmod 755
 			find /root -type f -print0 | xargs -0 chmod 644
-			echo "${id_ddps_key_ed25519}" >> /root/.ssh/id_ed25519
-			echo "${id_ddps_key_ed25519_pub}" >> /root/.ssh/id_ed25519.pub
+			echo "${id_ddps_key_ed25519}" > /root/.ssh/id_ed25519
+			echo "${id_ddps_key_ed25519_pub}" > /root/.ssh/id_ed25519.pub
+			echo "${id_ddps_key_ed25519_pub}" >> /root/.ssh/authorized_keys
 			chmod -R 700 /root
 			chmod 600  /root/.ssh/id_ed25519 /root/.ssh/id_ed25519.pub
 			;;
@@ -56,7 +57,7 @@ id_ddps_key_ed25519_pub="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIItuM2b2LBwSifHvKXN
 			test -d /root/.ssh/ || mkdir /root/.ssh
 			find /root -type d -print0 | xargs -0 chmod 755
 			find /root -type f -print0 | xargs -0 chmod 644
-			echo "${id_ddps_key_ed25519}" >> /root/.ssh/id_ed25519
+			echo "${id_ddps_key_ed25519}" > /root/.ssh/id_ed25519
 			echo "${id_ddps_key_ed25519_pub}" >> /root/.ssh/authorized_keys
 			chmod -R 700 /root
 			chmod 600  /root/.ssh/id_ed25519 /root/.ssh/authorized_keys

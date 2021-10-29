@@ -25,3 +25,4 @@
     with_items: "{{users}}"
     when:
       - "item.name|string not in ansible_facts.getent_group"
+

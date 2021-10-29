@@ -1,7 +1,7 @@
 ---
-- set_fact:
-    is_vagrant: "{% if env == 'prod' %} 'no' {% else %} 'yes' {% endif %}"
 # Vhen running on vagrant do not reboot in the middle of the play ...
+- set_fact:
+   is_vagrant: "{% if env == 'prod' %} 'no' {% else %} 'yes' {% endif %}"
 
 - name: "Install patches and updates on Ubuntu"
   become: true
@@ -29,6 +29,7 @@
     async: 309
     poll: 0
     when: 'reboot_required.rc == 0 and is_vagrant|string == "no"'
+#   when: 'reboot_required.rc == 0'
 
   - name: Wait for system to become reachable again
     wait_for_connection:

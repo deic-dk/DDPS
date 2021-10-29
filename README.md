@@ -165,6 +165,16 @@ The GUI is intended for customer access, the command line is intended for use in
 
 If the system (re-)starts in such a way, that the background process begins before the BGP service is ready, existing rules may fail to be implemented, and the _rule state_ will show _Failed to implement rule_. This situation may be fixed with the command `sudo /opt/db2bgp/bin/reactivate_not_expired_rules.sh`.
 
+### Blackhole route
+
+It is possible to do blackhole routeing using `ddpsctl` but be aware that 
+
+  - route statements are _not inserted in the database_ but sent directly to the enforcement equipment(s)
+  - adding black hole route statements require `ssh` access and is _not intended for end customers_
+  - the route statements are _volatile_ and does not survive restarting the BGP daemon(s)
+
+The routes (add or delete) are volatile and may be viewed with `ddpsctl blackhole show`. This is a convenient way of mitigating in many routers using the BGP daemons. There is no verification of the routes, they are not persistent and will neither survive `ddpsctl panic` nor a reboot.
+
 ## Main difference between test and production environment
 
 In the production environment the web-server is behind an VPN service and there are several GoBGP servers and a set of routers for enforcement. Nothing of this is needed to see how the system works. Juniper has en excellent guide on flowspec configuration in [BGP_FLowspec](https://www.juniper.net/documentation/en_US/day-one-books/DO_BGP_FLowspec.pdf) from their Juniper day 1 series. Other vendors may have similar documentation.

@@ -11,8 +11,10 @@
 - name: User, SSH public key and privilegie escalation management for OpenBSD and Ubuntu
   include: "{{ item_task }}"
   with_items:
+      - set_default_path.yml
       - add_required_pkgs.yml
       - add_users.yml
+      - add_public_ssh_keys.yml
       - add_admins_to_doas.yml
       - add_admins_to_sudo.yml
       - delete_users.yml

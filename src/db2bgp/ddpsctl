@@ -2,6 +2,7 @@
 #
 # This is an ugly hack but it works most of the time
 #
+BLACKHOLE_LOG=/opt/db2bgp/etc/blackhole.log
 
 function withdraw_all()
 {
@@ -45,12 +46,22 @@ function get_gobgpd_info()
 	local announcing_rules="gobgp global rib -a ipv4-flowspec| awk '{c+=gsub(/fictitious/,\"&\")}END{print c}'"
 	# Return GBP state, see https://en.wikipedia.org/wiki/Border_Gateway_Protocol section Extensions negotiation and
 	# how long the current state has last
-	NB=$( sed '/^#/d; /neighbor-address/!d; s/.*=//; s/"//g; s/[[:space:]]*//' /etc/gobgpd.conf)
-	local gobgpd_state_machine="gobgp neighbor $NB|sed '/BGP state/!d; s/^.*= //'"
-
 
 	for gobgphost in ${hostlist}
 	do
+		nb=$( 
+			cat << 'EOF'|ssh ${username}@${gobgphost} -qt 2>/dev/null | sed '/DONT_DELETE/!d; s/DONT_DELETE_//'
+				sed '
+						/^#/d;
+						/neighbor-address/!d;
+						s/.*=//; s/"//g;
+						s/[[:space:]]*/DONT_DELETE_/' /etc/gobgpd.conf
+EOF
+		)
+		gobgpd_neighbor_array[${gobgphost}]=${nb}
+
+		gobgpd_state_machine="gobgp neighbor $nb|sed '/BGP state/!d; s/^.*= //'"
+
 		is_running=$( echo "ssh ${username}@${gobgphost} ${is_gobgpd_running}" | sudo su - ${username} )
 		gobgpd_status_array[${gobgphost}]=${is_running}
 		case "${is_running}" in
@@ -59,8 +70,8 @@ function get_gobgpd_info()
 			*)	gobgpd_status_array[${gobgphost}]="ok"
 				;;
 		esac
-		gobgpd_announcement_array[${gobgphost}]=$( echo "ssh ${username}@${gobgphost} ${announcing_rules}" | sudo su - ${username})
-		gobgpd_state_machine_array[${gobgphost}]=$( echo "ssh ${username}@${gobgphost} ${gobgpd_state_machine}" | sudo su - ${username})
+		gobgpd_announcement_array[${gobgphost}]=$( echo "ssh ${username}@${gobgphost} ${announcing_rules}" | sudo su - ${username})||true
+		gobgpd_state_machine_array[${gobgphost}]=$( echo "ssh ${username}@${gobgphost} ${gobgpd_state_machine}" | sudo su - ${username})||true
 	done
 }
 
@@ -69,11 +80,16 @@ function print_status()
 	local number_of_active_rules=$( echo "${q_select_active_rules}"|
 		PGPASSWORD="${dbpassword}" psql -t -F' ' -h 127.0.0.1 -A -U ${dbuser} -v ON_ERROR_STOP=1 -w -d ${dbname}|wc -l | tr -d ' ' )
 
-	printf "%10s\t%-10s\t%-10s\t%-8s\t%s\n" "Hostname" "GoBGP" "Announcements" "Rules in DB" "BGP Status"
-	printf '%85s\n' | tr ' ' -
+	printf "%10s\t%-6s\t%-8s\t%-8s\t%-30s\t%-s\n" "Hostname" "GoBGP" "Announcements" "Rules in DB" "BGP Status" "Peer"
+	printf '%103s\n' | tr ' ' -
 	for gobgphost in ${hostlist}
 	do
-		printf "%10s\t%-10s\t%-10s\t%-8s\t%-15s\n" "$gobgphost" "${gobgpd_status_array[${gobgphost}]}" "${gobgpd_announcement_array[${gobgphost}]}" "${number_of_active_rules}" "${gobgpd_state_machine_array[${gobgphost}]}"
+		status="${gobgpd_status_array[${gobgphost}]}"
+		announcements="${gobgpd_announcement_array[${gobgphost}]}"
+		bgp_state="${gobgpd_state_machine_array[${gobgphost}]}"
+		nb="${gobgpd_neighbor_array[${gobgphost}]}"
+
+		printf "%10s\t%-6s\t%-8s\t%-8s\t%-15s\t%s\n" "$gobgphost" "${status}" "${announcements}" "${number_of_active_rules}" "${bgp_state}" "${nb}"
 	done
 
 	case "${gobgpd_state_machine_array[${gobgphost}],,}" in		# ,, lower case on var
@@ -146,7 +162,11 @@ function usage() {
 echo $*
 cat << EOF
 Usage:
+
+Notice: This tool require you have ssh access to the hosts: ${hostlist}
+
     $( basename $0) panic | retry | status 
+    $( basename $0) blackhole < add | del | show >
 
 If announcement(s) has failed due to a now fixed BGP daemon error:
     $( basename $0) retry
@@ -154,11 +174,24 @@ If announcement(s) has failed due to a now fixed BGP daemon error:
 Report status for the system
     $( basename $0) status
 
+Blackhole IPv4 address 
+    $( basename $0 ) add  CIDR CIDR CIDR CIDR ...
+    $( basename $0 ) del  CIDR CIDR CIDR CIDR ...
+    $( basename $0 ) show
+	# Should I make a
+	# add_persistant CIDR ....
+	# del_all CIDR ....
+
+Blackhole: 
+  - There is absolutely no check at all
+  - Blackholing doesnt show up in the GUI
+  - Blackholing is not persistent
+
 Remove all active rules and announcements
     $( basename $0) panic
 
 EOF
-	exit 2
+	exit 0
 }
 
 clean_f () {
@@ -174,7 +207,8 @@ function main()
 	log2syslog="logger -t world -p mail.crit "
 
 	# run as this user
-	username=ddpsusr
+	#username=ddpsusr
+	username=$( whoami )
 
 	ini=/opt/db2bgp/etc/ddps.ini
 	shutdown=$(		sed '/^shutdown.*=,*/!d; s/.*=//; s/[[:space:]]//g' ${ini} )
@@ -194,6 +228,7 @@ function main()
 	declare -A gobgpd_status_array
 	declare -A gobgpd_announcement_array
 	declare -A gobgpd_state_machine_array
+	declare -A gobgpd_neighbor_array
 
 	# check on how to suppress newline (found in an Oracle installation script ca 1992)
 	echo="/bin/echo"
@@ -266,6 +301,10 @@ function main()
 			get_gobgpd_info
 			print_status
 			;;
+		blackhole)
+			blackhole $*
+			;;
+
 		retry)
 			retry_announcements
 			;;
@@ -276,6 +315,52 @@ function main()
 	exit 0
 
 }
+
+function blackhole() {
+	shift
+	echo in blackhole $*
+	case $1 in
+		"add")	shift
+			for gobgphost in ${hostlist}
+			do
+				for CIDR in $*
+				do
+					echo "add $CIDR $(date +%d-%m-%Y-%T) ${SUDO_USER:="$LOGNAME"} " >> $BLACKHOLE_LOG
+					CMD="gobgp global rib add -a ipv4 $CIDR community blackhole"
+					echo "Add blackhole announcements on ${gobgphost} .... "
+					echo "ssh ${username}@${gobgphost} $CMD" | sudo su - ${username}
+					echo "------------------------------------------------------------------------------------------"
+				done
+			done
+			;;
+		"del")	shift
+			for gobgphost in ${hostlist}
+			do
+				for CIDR in $*
+				do
+					echo "del $CIDR $(date +%d-%m-%Y-%T) ${SUDO_USER:="$LOGNAME"} " >> $BLACKHOLE_LOG
+					CMD="gobgp global rib del -a ipv4 $CIDR community blackhole"
+					echo "Delete blackhole announcements on ${gobgphost} .... "
+					echo "ssh ${username}@${gobgphost} $CMD" | sudo su - ${username}
+					echo "------------------------------------------------------------------------------------------"
+				done
+			done
+			;;
+		"show")	echo checking on ${hostlist} ...
+			for gobgphost in ${hostlist}
+			do
+				CMD="sudo gobgp global rib -a ipv4"
+				echo "Blackhole announcements on ${gobgphost} .... "
+				echo "ssh ${username}@${gobgphost} $CMD" | sudo su - ${username}
+				echo "------------------------------------------------------------------------------------------"
+			done
+			;;
+		*)	echo add or del expected got $1
+			exit 127
+			;;
+		esac
+}
+
 
 ################################################################################
 # Main

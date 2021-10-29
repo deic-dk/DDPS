@@ -2,9 +2,9 @@
     <div class = "tablediv">
         {if $smarty.session.role != 3 && $smarty.session.role != 4 && $smarty.session.role != 5}
             <div style="text-align: right; margin: 20px 0px 10px;">
-             <a id="btnAddAction" href="index.php?action=network-add"><img src="/image/icon-add.png" />Add Network</a>
+             <a id="btnAddAction" href="index.php?action=network-add"><img src="/image/icon-add.png" />Add Subnet</a>
             {if $smarty.session.role ==1 }
-                <a id="btnAddActionExt" href="index.php?action=basicnetwork-add"><img src="/image/icon-add.png" />Add Basic Network</a>
+                <a id="btnAddActionExt" href="index.php?action=basicnetwork-add"><img src="/image/icon-add.png" />Add New Network</a>
             {/if}
             </div>
         {/if}

@@ -76,12 +76,13 @@ install_web_ui:   $(dbConfig.php)
 	chown -R www-data:www-data  $(prefix)//web/smarty/templates_c \
 								$(prefix)//web/smarty/cache
 
-# install if not exists
 SMARTY_README		=  "/usr/local/lib/php/smarty/README"
 install_smarty: $(SMARTY_README)
 
 $(SMARTY_README):
-	@bash install_smarty.sh  &>/dev/null
+	@tar xfpz smarty.tgz -C /usr/local/lib/php/
+	@chmod 555 $(shell find /usr/local/lib/php/smarty -type d )
+	@chmod 444 $(shell find /usr/local/lib/php/smarty -type f )
 
 $(dbConfig.php):
 	@rsync --delete --archive --compress --hard-links --exclude=.git --exclude=.DS_Store ddos/ $(prefix)
