@@ -89,7 +89,7 @@ $(dbConfig.php):
 
 fixfooter:
 	@if [ ! -f $(footer_file).org ]; then cp $(footer_file) $(footer_file).org; fi
-	@sed 's%<div id="support" class="content right" style="padding-top: 23px">DDPS Support: <a href="mailto:support@ddps.dk">ddps-info@deic.dk</a> </div>%<div id="support" class="content right" style="padding-top: 10px">Version: _VERSION_</br>DDPS Support: <a href="mailto:support@ddps.dk">ddps-info@deic.dk</a> </div>%' $(footer_file).org > $(footer_file)
+	@sed 's%<div id="support" class="content right" style="padding-top: 23px">DDPS Support: <a href="mailto:ddps-info@deic.dk">ddps-info@deic.dk</a> </div>%<div id="support" class="content right" style="padding-top: 10px">Version: _VERSION_</br>DDPS Support: <a href="mailto:ddps-info@deic.dk">ddps-info@deic.dk</a> </div>%' $(footer_file).org > $(footer_file)
 	@sed -i "s/_VERSION_/${VERSION}/g" $(footer_file)
 
 uninstall:
