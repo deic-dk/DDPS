@@ -279,6 +279,31 @@ $$ LANGUAGE 'plpgsql';
 
 DROP TRIGGER IF EXISTS max_new_flowspecrules_rate ON ddps.flowspecrules RESTRICT;
 
+--
+-- This may requre truncating the flowspecrules table
+--
+DROP INDEX ddps.idx_flowspecrules;
+CREATE UNIQUE INDEX idx_flowspecrules ON ddps.flowspecrules (
+	coalesce (direction, ''),
+    coalesce (srcordestport, ''),
+	coalesce (destinationport, ''),
+	coalesce (sourceport, ''),
+	coalesce (icmptype,  ''),
+	coalesce (icmpcode, ''),
+	coalesce (packetlength, ''),
+	coalesce (dscp, ''),
+	coalesce (description, ''),
+	coalesce (customerid, -1),
+	coalesce (uuid_customerid,  'ffffffff-ffff-ffff-ffff-ffffffffffff'),		-- assume not exist
+	coalesce (uuid_administratorid, 'ffffffff-ffff-ffff-ffff-ffffffffffff'),	-- assume not exist
+	coalesce (destinationprefix, '255.255.255.255/32'),							-- assume invalid
+	coalesce (sourceprefix, '255.255.255.255/32'),								-- assume invalid
+	coalesce (thenaction, ''),
+	coalesce (fragmentencoding, ''),
+	coalesce (ipprotocol, ''),
+	coalesce (tcpflags, '')
+) WHERE not isexpired;
+
 CREATE CONSTRAINT TRIGGER max_new_flowspecrules_rate
 AFTER INSERT
 ON ddps.flowspecrules
@@ -824,6 +849,8 @@ IF TRUE IN
             ELSE
                 RETURN (FALSE);
         END IF;
+		ELSE
+			RETURN (FALSE);
      END IF;
 END IF;
 END
@@ -841,10 +868,61 @@ EXCEPTION WHEN others THEN
 eND;
 $$ LANGUAGE 'plpgsql';
 
+---
+--- Prevent dangeling rules, where networks are deleted while rule(s) are active
+---
+CREATE OR REPLACE FUNCTION BlockingRulesWhenModifyingNetworks() RETURNS trigger AS $$
+    BEGIN
+        if (TG_OP = 'DELETE') THEN
+ 
+            if TRUE IN
+            (
+                select TRUE
+                from ddps.flowspecrules
+                where
+                    not isexpired
+                    and
+                    destinationprefix <<= OLD.net
+            ) THEN
+                RAISE EXCEPTION 'Dette netværk kan ikke slettes pga. non-expired regel';
+            END IF;
+            RETURN OLD;
+        END IF;    
+        IF (TG_OP = 'UPDATE') THEN
+ 
+            if TRUE IN
+            (
+                select TRUE
+                from ddps.flowspecrules
+                where
+                    not isexpired
+                    and
+                    destinationprefix <<= OLD.net
+                    and NOT destinationprefix <<= NEW.net
+            ) THEN
+                RAISE EXCEPTION 'Dette netværk kan ikke ændres pga. non-expired regel' ;
+            END IF;
+ 
+            RETURN NEW;
+ 
+        END IF;
+ 
+    END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS BlockingRulesWhenModifyingNetworks ON ddps.networks RESTRICT;
+
+CREATE TRIGGER BlockingRulesWhenModifyingNetworks
+BEFORE DELETE OR UPDATE
+ON ddps.networks
+FOR EACH ROW
+EXECUTE PROCEDURE BlockingRulesWhenModifyingNetworks();
+
+
 -- Modified BSD License
 -- ====================
 -- 
--- Copyright © 2020, Niels Thomas Haugård, Frank Thingholm and Mehran Khan
+-- Copyright © 2020, Niels Thomas Haugård and Frank Thingholm 
 -- www.deic.dk, wwww.i2.dk.dk
 -- All rights reserved.
 -- 

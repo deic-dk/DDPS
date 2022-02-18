@@ -193,10 +193,10 @@ sub printrules($)
 	}
 	my $sth = $dbh->prepare($sql);
 	if (! $sth ) {
-			logit($verbose, "Couldn't prepare statement: " . $dbh->errstr);
+			logit($verbose, "Couldn't prepare statement: " . $DBI::errstr);
 	}
 	if (! $sth->execute ) {
-		logit($verbose, "Couldn't execute statement: " . $sth->errstr);
+		logit($verbose, "Couldn't execute statement: " . $DBI::errstr);
 	}
 	my ($flowspecruleid,$validfrom,$validto,$notification,$thenaction,$description);
 
@@ -259,10 +259,10 @@ Use the GUI or '$0 -p' to see if the rule has been removed
 			}
 			my $sth = $dbh->prepare($sql_query);
 			if (! $sth ) {
-					logit($verbose, "Couldn't prepare statement: " . $dbh->errstr);
+					logit($verbose, "Couldn't prepare statement: " . $DBI::errstr);
 			}
 			if (! $sth->execute ) {
-				logit($verbose, "Couldn't execute statement: " . $sth->errstr);
+				logit($verbose, "Couldn't execute statement: " . $DBI::errstr);
 			}
 		}
 		default {
@@ -644,11 +644,11 @@ EOF
         }
 		my $sth = $dbh->prepare($sql_query);
 		if (! $sth ) {
-				logit($verbose, "Couldn't prepare statement: " . $dbh->errstr);
+				logit($verbose, "Couldn't prepare statement: " . $DBI::errstr);
 				$rule_not_appliable = 1;
 		}
 		if (! $sth->execute ) {
-			logit($verbose, "Couldn't execute statement: " . $sth->errstr);
+			logit($verbose, "Couldn't execute statement: " . $DBI::errstr);
 			$rule_not_appliable = 1;
 		}
 
@@ -688,10 +688,10 @@ sub initialize_hostinfo()
 
 	my $sth = $dbh->prepare($init_sql);
 	if (! $sth ) {
-			logit($verbose, "Couldn't prepare statement: " . $dbh->errstr);
+			logit($verbose, "Couldn't prepare statement: " . $DBI::errstr);
 	}
 	if (! $sth->execute ) {
-		logit($verbose, "Couldn't execute statement: " . $sth->errstr);
+		logit($verbose, "Couldn't execute statement: " . $DBI::errstr);
 	}
 	my $id = 1;
 
@@ -703,10 +703,10 @@ sub initialize_hostinfo()
 		}
 		my $sth = $dbh->prepare($sql_query);
 		if (! $sth ) {
-				logit($verbose, "Couldn't prepare statement: " . $dbh->errstr);
+				logit($verbose, "Couldn't prepare statement: " . $DBI::errstr);
 		}
 		if (! $sth->execute ) {
-			logit($verbose, "Couldn't execute statement: " . $sth->errstr);
+			logit($verbose, "Couldn't execute statement: " . $DBI::errstr);
 		}
 	$id ++;
 	}
@@ -744,7 +744,7 @@ sub update_hostinfo()
 				logit($verbose, "Couldn't prepare statement: " . $dbh->errstr);
 		}
 		if (! $sth->execute ) {
-			logit($verbose, "Couldn't execute statement: " . $sth->errstr);
+			logit($verbose, "Couldn't execute statement: " . $DBI::errstr);
 		}
 		$id ++;
 	} 
@@ -1415,7 +1415,7 @@ sub update_db($$$$)
 	my $sth = $dbh->prepare($sql_query);
 	if (! $sth->execute()) 
 	{
-		logit($verbose, "sql failed: ", sth->errstr);
+		logit($verbose, "sql failed: ", $DBI::errstr);
 	}
 }
 
