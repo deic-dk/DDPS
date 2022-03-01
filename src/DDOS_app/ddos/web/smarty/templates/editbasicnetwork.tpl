@@ -8,7 +8,8 @@
 
             <div>
                 <label class = "labelclass">CIDR</label>
-                <input type="text"name="cidr" id="cidr" class="myInputBox" value = "{$result.net}" required>
+                <input type="text"name="cidr" id="cidr" class="myInputBox" value = "{$result.net}" onBlur="checkNetwork()" required>
+                <label class = "labelclass"></label><span id="network-availability-status"></span>
             </div>
 
             <div>
